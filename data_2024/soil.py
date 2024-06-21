@@ -2,7 +2,7 @@
 kw = 0.57 
 k_quartz = 8.8
 k_clay = 2.92
-n = 0.4 # porosity, literature value?
+n = 0.4 # porosity, value is more or less arbitrary here ->  TODO find actual value
 
 
 def get_soil_texture(depth):
@@ -92,9 +92,71 @@ def fill_thermal_conductivity(df):
     depths = [5, 15, 30] # cm
     for measure_idx in measure_indices:
         for depth in depths:
-            df[f"thermalConductivity_{measure_idx}_{depth}cm"] = df.apply(lambda x: get_thermal_conductivity(x[f"soilMoisture_{measure_idx}_{depth}cm"] / 100, depth), 
-                        axis=1)
+            df[f"thermalConductivity_{measure_idx}_{depth}cm"] = df.apply(lambda x: get_thermal_conductivity(x[f"soilMoisture_{measure_idx}_{depth}cm"] / 100, depth), axis=1)
             
     return df
 
 
+
+def compute_soil_heatflux(df):
+    """Compute soil heatflux 
+    Compute gradient at every measuring site and then average
+    Use only data at 5 and 15 cm depth
+
+    Args:
+        df (_type_): _description_
+    """
+    measure_indices = [1, 2, 3]
+    # compute gradient at every measurement site
+    for measure_idx in measure_indices:
+        df[f"dTdz_5cm_15cm_{measure_idx}"] = (df[f"soilTemperature_{measure_idx}_15cm"] - df[f"soilTemperature_{measure_idx}_5cm"]) / 0.1
+        # df[f"dTdz_5cm_30cm_{measure_idx}"] = (df[f"soilTemperature_{measure_idx}_5cm"] - df[f"soilTemperature_{measure_idx}_30cm"]) / 0.25
+        # df[f"dTdz_15cm_30cm_{measure_idx}"] = (df[f"soilTemperature_{measure_idx}_15cm"] - df[f"soilTemperature_{measure_idx}_30cm"]) / 0.15
+
+    # compute mean thermal conductivity at 5cm
+    df["thermalConductivity_5cm_mean"] = df[["thermalConductivity_1_5cm",
+                                             "thermalConductivity_2_5cm",
+                                             "thermalConductivity_3_5cm"]].mean(axis=1)
+
+
+    # compute mean gradient
+    # df["dTdz_mean"] = df[["dTdz_5cm_15cm_1", "dTdz_5cm_15cm_2", "dTdz_5cm_15cm_3",
+    #                       "dTdz_5cm_30cm_1", "dTdz_5cm_30cm_2", "dTdz_5cm_30cm_3",
+    #                       "dTdz_15cm_30cm_1", "dTdz_15cm_30cm_2", "dTdz_15cm_30cm_3"]].mean(axis = 1)
+    
+    df["dTdz_mean"] = df[["dTdz_5cm_15cm_1", "dTdz_5cm_15cm_2", "dTdz_5cm_15cm_3"]].mean(axis = 1)
+
+
+    df["soilHeatflux"] = -1 * df["thermalConductivity_5cm_mean"] * df["dTdz_mean"]
+    return df
+
+
+def compute_soil_heatflux2(df):
+    """Compute soil heatflux 
+    Average temperatures over all three sites and then compute gradient
+    Use only data at 5 and 15 cm depth
+
+    Args:
+        df (_type_): _description_
+    """
+    measure_indices = [1, 2, 3]
+    # compute gradient at every measurement site
+    df["soilTemperature_5cm_mean"] = df[["soilTemperature_1_5cm", "soilTemperature_2_5cm", "soilTemperature_3_5cm"]].mean(axis=1)
+    df["soilTemperature_15cm_mean"] = df[["soilTemperature_1_15cm", "soilTemperature_2_15cm", "soilTemperature_3_15cm"]].mean(axis=1)
+
+    # compute mean thermal conductivity at 5cm
+    df["thermalConductivity_5cm_mean"] = df[["thermalConductivity_1_5cm",
+                                             "thermalConductivity_2_5cm",
+                                             "thermalConductivity_3_5cm"]].mean(axis=1)
+
+
+    # compute mean gradient
+    # df["dTdz_mean"] = df[["dTdz_5cm_15cm_1", "dTdz_5cm_15cm_2", "dTdz_5cm_15cm_3",
+    #                       "dTdz_5cm_30cm_1", "dTdz_5cm_30cm_2", "dTdz_5cm_30cm_3",
+    #                       "dTdz_15cm_30cm_1", "dTdz_15cm_30cm_2", "dTdz_15cm_30cm_3"]].mean(axis = 1)
+    
+    df["dTdz_mean"] = (df["soilTemperature_15cm_mean"] - df["soilTemperature_5cm_mean"]) / 0.1
+
+
+    df["soilHeatflux"] = -1 * df["thermalConductivity_5cm_mean"] * df["dTdz_mean"]
+    return df
