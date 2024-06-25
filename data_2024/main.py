@@ -37,7 +37,7 @@ df_meteo_goew = fill_thermal_conductivity(df_meteo_goew)
 df_meteo_goew = compute_soil_heatflux(df_meteo_goew)
 
 def plot_diurnal_cycles_soil(df):
-    df_agg = df.groupby("TIME_START").agg(G=("soilHeatflux", "mean"), moisture=("soilMoisture_1_5cm", "mean"), k=("thermalConductivity_5cm_mean", "mean"), dTdz = ("dTdz_mean", "mean")).reset_index()
+    df_agg = df.groupby("TIME_START").agg(G=("soilHeatflux", "mean"), moisture=("soilMoisture_1_5cm", "mean"), k=("thermalConductivity_5cm_mean", "mean"), dTdz = ("dTdz_mean", "mean"), T1_15cm = ("soilTemperature_1_15cm", "mean")).reset_index()
     plt.plot(df_agg["TIME_START"], df_agg["G"])
     plt.xticks(df_agg["TIME_START"].unique()[::2], rotation = 90)
     plt.ylabel("$G$")
@@ -47,3 +47,6 @@ def plot_diurnal_cycles_soil(df):
 
 df_agg = plot_diurnal_cycles_soil(df_meteo_goew)
 #df_agg.to_csv("bla.csv")
+
+
+print(df_meteo_goew["soilMoisture_1_5cm"].min())

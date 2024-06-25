@@ -1,9 +1,11 @@
 # thermal conductivity of water, quartz and other materials in Watts per meter per Kelvin
 k_water = 0.57 
 k_quartz = 8.8
-k_other = 2.92
-n = 0.4 # porosity, value is more or less arbitrary here ->  TODO find actual value
+k_clay = 2.92
 
+rho_bulk = 1.2 # bulk density in g/ cm^3 (from https://doi.org/10.1016/j.foreco.2019.04.022)
+rho_quartz = 2.66
+rho_clay = 2.65
 
 def get_soil_texture(depth):
     """Get soil texture of Goettingen Forest at specific depth according to
@@ -17,30 +19,29 @@ def get_soil_texture(depth):
     Returns:
         _type_: _description_
     """
-    xs = 1 - n # soil content
 
     assert depth < 90
     
     if depth < 5:
-        x_other = xs * 0.36
-        x_quartz = xs * 0.64
+        x_clay = 0.36
+        x_quartz = 0.64
     elif depth < 10:
-        x_other = xs * 0.41
-        x_quartz = xs * 0.59
+        x_clay = 0.41
+        x_quartz = 0.59
     elif depth < 20:
-        x_other = xs * 0.39
-        x_quartz = xs * 0.61
+        x_clay = 0.39
+        x_quartz = 0.61
     elif depth < 30:
-        x_other = xs * 0.54
-        x_quartz = xs * 0.46
+        x_clay = 0.54
+        x_quartz = 0.46
     elif depth < 60:
-        x_other = xs * 0.3
-        x_quartz = xs * 0.7   
+        x_clay = 0.3
+        x_quartz = 0.7   
     else: 
-        x_other = xs * 0.23
-        x_quartz = xs * 0.77
+        x_clay = 0.23
+        x_quartz = 0.77
 
-    return x_quartz, x_other
+    return x_quartz, x_clay
 
 
 
@@ -55,13 +56,24 @@ def get_thermal_conductivity(x_water, depth):
         water_content (_type_): _description_
     """
 
+    # get dry soil texture 
+    x_quartz_dry, x_clay_dry = get_soil_texture(depth)
+
+    # compute porosity
+    n = 1 - rho_bulk / (x_quartz_dry * rho_quartz + x_clay_dry * rho_clay)
+
+    # compute soil content (fraction of wet mass that is due to soil particles)
+    xs = 1 - n
+
+    # compute wet soil texture
+    x_quartz = xs * x_quartz_dry
+    x_clay = xs * x_clay_dry
+
     # compute air content (= porosity minus water content)
     x_air = n - x_water
 
-    # compute dry soil texture 
-    x_quartz, x_other = get_soil_texture(depth)
 
-    # compute air thermal conductivity at 4.4 degrees
+    # compute air thermal conductivity at 4.4 degrees celsius (maybe adjust this for actual temperature?)
     if x_water > 0.09:
         k_air = 0.059 + 0.066
     else:
@@ -69,8 +81,8 @@ def get_thermal_conductivity(x_water, depth):
         
     # weighting factor for quartz
     F_quartz = 1 / 3 * (2 / (1+ 0.125 * (k_quartz / k_water - 1)) + 1 / (1+ 0.75 * (k_quartz / k_water - 1)))
-    # weighting factor for other materials
-    F_other = 1 / 3 * (2 / (1+ 0.125 * (k_other / k_water - 1)) + 1 / (1+ 0.75 * (k_other / k_water - 1)))
+    # weighting factor for clay
+    F_clay = 1 / 3 * (2 / (1+ 0.125 * (k_clay / k_water - 1)) + 1 / (1+ 0.75 * (k_clay / k_water - 1)))
 
     # weighting factor for air
     if x_water > 0.09:
@@ -81,7 +93,7 @@ def get_thermal_conductivity(x_water, depth):
     F_air = 1 / 3 * (2 / (1+ ga * (k_air / k_water - 1)) + 1 / (1+ gc * (k_air / k_water - 1)))
     
     # compute thermal conductivity
-    k = (k_water * x_water + F_air * k_air * x_air + F_quartz * k_quartz * x_quartz + F_other * k_other * x_other) / (x_water  + F_air * x_air + F_quartz * x_quartz + F_other * x_other)
+    k = (k_water * x_water + F_air * k_air * x_air + F_quartz * k_quartz * x_quartz + F_clay * k_clay * x_clay) / (x_water  + F_air * x_air + F_quartz * x_quartz + F_clay * x_clay)
     return k
 
 
@@ -90,7 +102,7 @@ def fill_thermal_conductivity(df):
     """Compute thermal conductivity for all measurements at all depths
 
     Args:
-        df (_type_): _description_
+        df (_type_): goewa meteo dataframe
 
     Returns:
         _type_: _description_
@@ -117,19 +129,12 @@ def compute_soil_heatflux(df):
     # compute gradient at every measurement site
     for measure_idx in measure_indices:
         df[f"dTdz_5cm_15cm_{measure_idx}"] = (df[f"soilTemperature_{measure_idx}_15cm"] - df[f"soilTemperature_{measure_idx}_5cm"]) / 0.1
-        # df[f"dTdz_5cm_30cm_{measure_idx}"] = (df[f"soilTemperature_{measure_idx}_5cm"] - df[f"soilTemperature_{measure_idx}_30cm"]) / 0.25
-        # df[f"dTdz_15cm_30cm_{measure_idx}"] = (df[f"soilTemperature_{measure_idx}_15cm"] - df[f"soilTemperature_{measure_idx}_30cm"]) / 0.15
 
     # compute mean thermal conductivity at 5cm
     df["thermalConductivity_5cm_mean"] = df[["thermalConductivity_1_5cm",
                                              "thermalConductivity_2_5cm",
                                              "thermalConductivity_3_5cm"]].mean(axis=1)
 
-
-    # compute mean gradient
-    # df["dTdz_mean"] = df[["dTdz_5cm_15cm_1", "dTdz_5cm_15cm_2", "dTdz_5cm_15cm_3",
-    #                       "dTdz_5cm_30cm_1", "dTdz_5cm_30cm_2", "dTdz_5cm_30cm_3",
-    #                       "dTdz_15cm_30cm_1", "dTdz_15cm_30cm_2", "dTdz_15cm_30cm_3"]].mean(axis = 1)
     
     df["dTdz_mean"] = df[["dTdz_5cm_15cm_1", "dTdz_5cm_15cm_2", "dTdz_5cm_15cm_3"]].mean(axis = 1)
 
@@ -157,13 +162,13 @@ def compute_soil_heatflux2(df):
                                              "thermalConductivity_3_5cm"]].mean(axis=1)
 
 
-    # compute mean gradient
-    # df["dTdz_mean"] = df[["dTdz_5cm_15cm_1", "dTdz_5cm_15cm_2", "dTdz_5cm_15cm_3",
-    #                       "dTdz_5cm_30cm_1", "dTdz_5cm_30cm_2", "dTdz_5cm_30cm_3",
-    #                       "dTdz_15cm_30cm_1", "dTdz_15cm_30cm_2", "dTdz_15cm_30cm_3"]].mean(axis = 1)
     
     df["dTdz_mean"] = (df["soilTemperature_15cm_mean"] - df["soilTemperature_5cm_mean"]) / 0.1
 
 
     df["soilHeatflux"] = -1 * df["thermalConductivity_5cm_mean"] * df["dTdz_mean"]
     return df
+
+
+
+
