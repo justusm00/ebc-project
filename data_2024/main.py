@@ -46,7 +46,3 @@ def plot_diurnal_cycles_soil(df):
     return df_agg
 
 df_agg = plot_diurnal_cycles_soil(df_meteo_goew)
-#df_agg.to_csv("bla.csv")
-
-
-print(df_meteo_goew["soilMoisture_1_5cm"].min())
