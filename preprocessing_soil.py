@@ -3,96 +3,75 @@ import pandas as pd
 
 
 
-
-def convert_timestamps(df):
-    """Create time and date columns based on timestamp columns
-
-    Args:
-        df (_type_): _description_
+def transform_timestamp(df, col_name):
     """
-    df["DATE_START"] = pd.to_datetime(df["TIMESTAMP_START"].str.split(" ").str[0])
-    df["TIME_START"] = df["TIMESTAMP_START"].str.split(" ").str[1]
-    df["DATE_MID"] = pd.to_datetime(df["TIMESTAMP_MID"].str.split(" ").str[0])
-    df["TIME_MID"] = df["TIMESTAMP_MID"].str.split(" ").str[1]
-    df["DATE_END"] = pd.to_datetime(df["TIMESTAMP_END"].str.split(" ").str[0])
-    df["TIME_END"] = df["TIMESTAMP_END"].str.split(" ").str[1]
+    Transform timestamp to proper date/year/month/day values
+    
+    Args:
+        df (pandas dataframe): dataframe with timestamps
+        col_name (str): column of original dataframe based on which to infer dates. Should be 'TIMESTAMP_START', 'TIMESTAMP_MITTE', or 'TIMESTAMP_ENDE'
+    Returns:
+        df (pandas dataframe)
+    """
+
+    df["date"] = pd.to_datetime(df[col_name].str.split(" ").str[0])
+    df["time"] = df[col_name].str.split(" ").str[1]
+
     return df
 
 
-def convert_dtypes_fluxes(df):
-    """Convert relevant flux columns to float
-
-    Args:
-        df (_type_): _description_
+def numerical_to_float(df, cols):
     """
-    df["H_f"] = df["H_f"].astype(float)
-    df["H_orig"] = df["H_orig"].astype(float)
-    df["LE_f"] = df["LE_f"].astype(float)
-    df["NEE_f"] = df["NEE_f"].astype(float)
-    return df
-
-
-
-def convert_dtypes_meteo_fbg(df):
-    """Convert relevant meteo columns to float (for FBG data)
-
     Args:
-        df (_type_): _description_
+        df (pandas dataframe): dataframe to preprocess
+        cols (list of str): names of columns to apply the dtype change to
+    Returns:
+        df (pandas dataframe)
     """
-    df["netRadiation_300cm"] = df["netRadiation_300cm"].astype(float)
-    df["soilHeatFlux"] = df["soilHeatFlux"].astype(float)
+    for c in cols:
+        try:
+            df[f'{c}'] = df[f'{c}'].astype(dtype=float)
+        except ValueError:
+            # some files use ',' (comma) as decimal separator, replace with '.' (dot)
+            df[f'{c}'] = df[f'{c}'].apply(lambda x: str(x).replace(',', '.'))
+            df[f'{c}'] = df[f'{c}'].astype(dtype=float)
+    
     return df
 
 
 
-def convert_dtypes_meteo_goew(df):
-    """Convert relevant meteo columns to float (for GOEW data)
-    In this case the ground heat flux needs to be calculated manually so more colujmns are needed
+def prepare_data(df_flux_fbg, df_flux_goew, df_meteo_fbg, df_meteo_goew, cols_fluxes, cols_meteo_fbg, cols_meteo_goew, col_timestamps):
+    """Pipeline to prepare data for soil heatflux computation
 
     Args:
-        df (_type_): _description_
+        df_flux_fbg (_type_): _description_
+        df_flux_goew (_type_): _description_
+        df_meteo_fbg (_type_): _description_
+        df_meteo_goew (_type_): _description_
+        cols_fluxes (_type_): _description_
+        cols_meteo_fbg (_type_): _description_
+        cols_meteo_goew (_type_): _description_
+        col_timestamps (_type_): _description_
+
+    Returns:
+        _type_: _description_
     """
-
-    df["incomingLongwaveRadiation_43m"] = df["incomingLongwaveRadiation_43m"].astype(float)
-    df["incomingShortwaveRadiation_43m"] = df["incomingShortwaveRadiation_43m"].astype(float)
-    df["outgoingLongwaveRadiation_43m"] = df["outgoingLongwaveRadiation_43m"].astype(float)
-    df["outgoingShortwaveRadiation_43m"] = df["outgoingShortwaveRadiation_43m"].astype(float)
-    df["soilMoisture_1_15cm"] = df["soilMoisture_1_15cm"].astype(float)
-    df["soilMoisture_1_30cm"] = df["soilMoisture_1_30cm"].astype(float)
-    df["soilMoisture_1_5cm"] = df["soilMoisture_1_5cm"].astype(float)
-    df["soilMoisture_2_15cm"] = df["soilMoisture_2_15cm"].astype(float)
-    df["soilMoisture_2_30cm"] = df["soilMoisture_2_30cm"].astype(float)
-    df["soilMoisture_2_5cm"] = df["soilMoisture_2_5cm"].astype(float)
-    df["soilMoisture_3_15cm"] = df["soilMoisture_3_15cm"].astype(float)
-    df["soilMoisture_3_30cm"] = df["soilMoisture_3_30cm"].astype(float)
-    df["soilMoisture_3_5cm"] = df["soilMoisture_3_5cm"].astype(float)
-    df["soilTemperature_1_15cm"] = df["soilTemperature_1_15cm"].astype(float)
-    df["soilTemperature_1_30cm"] = df["soilTemperature_1_30cm"].astype(float)
-    df["soilTemperature_1_5cm"] = df["soilTemperature_1_5cm"].astype(float)
-    df["soilTemperature_2_15cm"] = df["soilTemperature_2_15cm"].astype(float)
-    df["soilTemperature_2_30cm"] = df["soilTemperature_2_30cm"].astype(float)
-    df["soilTemperature_2_5cm"] = df["soilTemperature_2_5cm"].astype(float)
-    df["soilTemperature_3_15cm"] = df["soilTemperature_3_15cm"].astype(float)
-    df["soilTemperature_3_30cm"] = df["soilTemperature_3_30cm"].astype(float)
-    df["soilTemperature_3_5cm"] = df["soilTemperature_3_5cm"].astype(float)
-    return df
-
-
-
-def prepare_data(df_flux_fbg, df_flux_goew, df_meteo_fbg, df_meteo_goew):
     # drop first row (only contains units)
     df_flux_fbg = df_flux_fbg.drop(0)
     df_flux_goew = df_flux_goew.drop(0)
     df_meteo_fbg = df_meteo_fbg.drop(0)
     df_meteo_goew = df_meteo_goew.drop(0)
-    df_flux_fbg = convert_timestamps(df_flux_fbg)
-    df_flux_goew = convert_timestamps(df_flux_goew)
-    df_meteo_fbg = convert_timestamps(df_meteo_fbg)
-    df_meteo_goew = convert_timestamps(df_meteo_goew)
-    df_flux_fbg = convert_dtypes_fluxes(df_flux_fbg)
-    df_flux_goew = convert_dtypes_fluxes(df_flux_goew)
-    df_meteo_fbg = convert_dtypes_meteo_fbg(df_meteo_fbg)
-    df_meteo_goew = convert_dtypes_meteo_goew(df_meteo_goew)
+    # create date and time columns
+    df_flux_fbg = transform_timestamp(df_flux_fbg, col_timestamps)
+    df_flux_goew = transform_timestamp(df_flux_goew, col_timestamps)
+    df_meteo_fbg = transform_timestamp(df_meteo_fbg, col_timestamps)
+    df_meteo_goew = transform_timestamp(df_meteo_goew, col_timestamps)
+    # convert relevant columns to float
+    df_flux_fbg = numerical_to_float(df_flux_fbg, cols_fluxes)
+    df_flux_goew = numerical_to_float(df_flux_goew, cols_fluxes)
+    df_meteo_fbg = numerical_to_float(df_meteo_fbg, cols_meteo_fbg)
+    df_meteo_goew = numerical_to_float(df_meteo_goew, cols_meteo_goew)
+
     return df_flux_fbg, df_flux_goew, df_meteo_fbg, df_meteo_goew
 
 
