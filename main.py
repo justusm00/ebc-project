@@ -23,7 +23,7 @@ cols_fluxes = ["H_f", "H_orig", "LE_f", "NEE_f"]
 
 # prepare data
 df_flux_fbg, df_flux_goew, df_meteo_fbg, df_meteo_goew = prepare_data(df_flux_fbg, df_flux_goew, df_meteo_fbg,
-                                                                      df_meteo_goew, cols_fluxes, cols_meteo_fbg, cols_meteo_goew, "TIMESTAMP_START")
+                                                                      df_meteo_goew, cols_fluxes, cols_meteo_fbg, cols_meteo_goew, "TIMESTAMP_START", fill_gaps=True)
 
 
 # compute thermal conductivity

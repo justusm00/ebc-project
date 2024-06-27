@@ -39,9 +39,27 @@ def numerical_to_float(df, cols):
     return df
 
 
+def interpolate_gaps(df, cols):
+    """Gap fill relevant columns using simple linear interpolation
+    Only suitable for small gaps 
 
-def prepare_data(df_flux_fbg, df_flux_goew, df_meteo_fbg, df_meteo_goew, cols_fluxes, cols_meteo_fbg, cols_meteo_goew, col_timestamps):
+    Args:
+        df (_type_): _description_
+        cols (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """
+    for col in cols:
+        df[col] = df[col].interpolate()
+
+    return df
+
+
+
+def prepare_data(df_flux_fbg, df_flux_goew, df_meteo_fbg, df_meteo_goew, cols_fluxes, cols_meteo_fbg, cols_meteo_goew, col_timestamps, fill_gaps=True):
     """Pipeline to prepare data for soil heatflux computation
+    TODO add gap-filling
 
     Args:
         df_flux_fbg (_type_): _description_
@@ -71,6 +89,10 @@ def prepare_data(df_flux_fbg, df_flux_goew, df_meteo_fbg, df_meteo_goew, cols_fl
     df_flux_goew = numerical_to_float(df_flux_goew, cols_fluxes)
     df_meteo_fbg = numerical_to_float(df_meteo_fbg, cols_meteo_fbg)
     df_meteo_goew = numerical_to_float(df_meteo_goew, cols_meteo_goew)
+    # interpolate gaps in goew data
+    if fill_gaps:
+        df_meteo_goew = interpolate_gaps(df_meteo_goew, cols_meteo_goew)
+
 
     return df_flux_fbg, df_flux_goew, df_meteo_fbg, df_meteo_goew
 
