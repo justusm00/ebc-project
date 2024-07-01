@@ -177,7 +177,3 @@ def data_loaders(trainset, valset, testset, batch_size=64, num_cpus=1):
                                              num_workers=num_cpus)
     return trainloader, valloader, testloader
 
-
-
-def normalize_trainset(trainset):
-    
