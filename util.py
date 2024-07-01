@@ -75,7 +75,7 @@ class EBCDataset(Dataset):
 
 
 # Data loader
-def grab_data(num_cpus=1):
+def grab_data(path, columns_data=None, columns_labels=None, num_cpus=1):
     """Loads data from data_dir
 
     Args:
@@ -89,12 +89,14 @@ def grab_data(num_cpus=1):
     # Load the data from 2023 and 2024 into pandas
     cwd = os.getcwd()
 
-    data_path = os.path.join( cwd, 'data/data_preprocessed.csv' )
+    data_path = os.path.join( cwd, path )
     data = pd.read_csv(  data_path )
 
     # Select data and labels
-    columns_data = ['CO2', 'H2O', 'Ustar', 'location', 'year', 'month', 'day', '30min']
-    columns_labels = ['H_orig', 'LE_orig']
+    if columns_data == None:
+        columns_data = ['CO2', 'H2O', 'Ustar', 'location', 'year', 'month', 'day', '30min']
+    if columns_labels == None:
+        columns_labels = ['H_orig', 'LE_orig']
     # Convert to torch tensor
     data_tensor = torch.tensor(data[ columns_data ].values, dtype=torch.float32)
     labels_tensor = torch.tensor(data[ columns_labels].values, dtype=torch.float32)
