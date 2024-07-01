@@ -96,7 +96,7 @@ def grab_data(path, columns_data=None, columns_labels=None, num_cpus=1, return_d
 
     Returns:
         Returns datasets as Dataset class for Göttingen forest and Bothanic Garden combined
-        or returns the data and labels as torch tensors for model predictions
+        or returns the data and labels as pandas.dataframe for model predictions
     """
     # Load the data from 2023 and 2024 into pandas
     cwd = os.getcwd()
@@ -109,16 +109,18 @@ def grab_data(path, columns_data=None, columns_labels=None, num_cpus=1, return_d
         columns_data = ['CO2', 'H2O', 'Ustar', 'location', 'year', 'month', 'day', '30min']
     if columns_labels == None:
         columns_labels = ['H_orig', 'LE_orig']
-    # Convert to torch tensor
-    data_tensor = torch.tensor(data[ columns_data ].values, dtype=torch.float32)
-    labels_tensor = torch.tensor(data[ columns_labels].values, dtype=torch.float32)
+   
 
-    if return_dataset==True:
+    if return_dataset:
+        # Convert to torch tensor
+        data_tensor = torch.tensor(data[ columns_data ].values, dtype=torch.float32)
+        labels_tensor = torch.tensor(data[ columns_labels].values, dtype=torch.float32)
+
         dataset = EBCDataset(data_tensor, labels_tensor)
         return dataset, len(columns_data), len(columns_labels)
     
     else:
-        return data_tensor, labels_tensor, len(columns_data), len(columns_labels)
+        return data[columns_data], data[columns_labels], len(columns_data), len(columns_labels)
 
 
 
