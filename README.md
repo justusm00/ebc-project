@@ -16,6 +16,8 @@
 - Predict H_orig and LE_orig (Robin)
 - ( Data Augmentation )
 - Compare to gap filling of original data and diurnal mean interpolation
+- Normalization - use only trainset, but how to keep track of statistics for prediction?
+- Use more features - also Meteo Data for gap filling!
 
 
 # Results
