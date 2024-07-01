@@ -7,7 +7,6 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 
 import torch
-import torchvision
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
@@ -177,3 +176,8 @@ def data_loaders(trainset, valset, testset, batch_size=64, num_cpus=1):
                                              shuffle=True, 
                                              num_workers=num_cpus)
     return trainloader, valloader, testloader
+
+
+
+def normalize_trainset(trainset):
+    

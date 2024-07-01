@@ -1,10 +1,7 @@
 import os
 import pandas as pd
 from tqdm import tqdm
-from sklearn.preprocessing import minmax_scale
 
-import sys
-sys.path.append('../ebc-project')
 from modules.util import transform_timestamp, numerical_to_float
 
 PATH = 'data/data_files/'
@@ -73,10 +70,5 @@ print(f'\nRows removed because of NA: {sum(count_na)}\n')
 # combine the preprocessed data into single dataframe
 data_final = pd.concat(data, axis=0, ignore_index=True)
 
-# rescaling all numerical values to be in range [0,1]
-# alternatively center around 0 with unit std?
-for col, type in zip(data_final.columns, data_final.dtypes):
-    if type == 'float64':
-        data_final[f'{col}'] = minmax_scale(data_final[f'{col}'])
 
 data_final.to_csv('data/data_preprocessed.csv')
