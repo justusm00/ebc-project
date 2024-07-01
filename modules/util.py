@@ -15,15 +15,21 @@ from torch.utils.data import Dataset, DataLoader
 import fastprogress
 
 
+def encode_timestamp(timestamp):
+    """
+    For encoding the 30 minute blocks into integers 
+    """
+    number_of_seconds = timestamp.hour * 3600 + timestamp.minute * 60
+    return number_of_seconds // 1800 # 1800 because of 30-minute stepwidth
+
+
 def transform_timestamp(df, col_name):
     """
     Transform timestamp to proper date/year/month/day values
     
     Args:
-        df (pandas dataframe): dataframe with timestamps
-        col_name (str): column of original dataframe based on which to infer dates. Should be 'TIMESTAMP_START', 'TIMESTAMP_MITTE', or 'TIMESTAMP_ENDE'
-    Returns:
-        df (pandas dataframe)
+        df
+        col_name: column of original dataframe based on which to infer dates
     """
 
     df['date'] = df[f'{col_name}'].apply(lambda x: pd.to_datetime(x, format='%Y-%m-%d %H:%M:%S'))
@@ -31,6 +37,11 @@ def transform_timestamp(df, col_name):
     df['month'] = df[f'{col_name}'].apply(lambda x: pd.to_datetime(x, format='%Y-%m-%d %H:%M:%S').month)
     df['day'] = df[f'{col_name}'].apply(lambda x: pd.to_datetime(x, format='%Y-%m-%d %H:%M:%S').day)
 
+    """
+    Robin: Encode the 30 minute intervals using integers
+    """
+    df['30min'] = df['date'].apply( encode_timestamp )
+    
     return df
 
 
@@ -75,7 +86,7 @@ class EBCDataset(Dataset):
 
 
 # Data loader
-def grab_data(path, columns_data=None, columns_labels=None, num_cpus=1):
+def grab_data(path, columns_data=None, columns_labels=None, num_cpus=1, return_dataset=True):
     """Loads data from data_dir
 
     Args:
@@ -85,6 +96,7 @@ def grab_data(path, columns_data=None, columns_labels=None, num_cpus=1):
 
     Returns:
         Returns datasets as Dataset class for Göttingen forest and Bothanic Garden combined
+        or returns the data and labels as torch tensors for model predictions
     """
     # Load the data from 2023 and 2024 into pandas
     cwd = os.getcwd()
@@ -101,9 +113,12 @@ def grab_data(path, columns_data=None, columns_labels=None, num_cpus=1):
     data_tensor = torch.tensor(data[ columns_data ].values, dtype=torch.float32)
     labels_tensor = torch.tensor(data[ columns_labels].values, dtype=torch.float32)
 
-    dataset = EBCDataset(data_tensor, labels_tensor)
-
-    return dataset, len(columns_data), len(columns_labels)
+    if return_dataset==True:
+        dataset = EBCDataset(data_tensor, labels_tensor)
+        return dataset, len(columns_data), len(columns_labels)
+    
+    else:
+        return data_tensor, labels_tensor, len(columns_data), len(columns_labels)
 
 
 
