@@ -1,5 +1,7 @@
 # Custom directories
-ebc-project/
+# virtual environment
+ebc-project/ 
+more_data/
 
 
 # Byte-compiled / optimized / DLL files
