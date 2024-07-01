@@ -86,7 +86,7 @@ class EBCDataset(Dataset):
 
 
 # Data loader
-def grab_data(path, columns_data=None, columns_labels=None, num_cpus=1):
+def grab_data(path, columns_data=None, columns_labels=None, num_cpus=1, return_dataset=True):
     """Loads data from data_dir
 
     Args:
@@ -96,6 +96,7 @@ def grab_data(path, columns_data=None, columns_labels=None, num_cpus=1):
 
     Returns:
         Returns datasets as Dataset class for Göttingen forest and Bothanic Garden combined
+        or returns the data and labels as torch tensors for model predictions
     """
     # Load the data from 2023 and 2024 into pandas
     cwd = os.getcwd()
@@ -112,9 +113,12 @@ def grab_data(path, columns_data=None, columns_labels=None, num_cpus=1):
     data_tensor = torch.tensor(data[ columns_data ].values, dtype=torch.float32)
     labels_tensor = torch.tensor(data[ columns_labels].values, dtype=torch.float32)
 
-    dataset = EBCDataset(data_tensor, labels_tensor)
-
-    return dataset, len(columns_data), len(columns_labels)
+    if return_dataset==True:
+        dataset = EBCDataset(data_tensor, labels_tensor)
+        return dataset, len(columns_data), len(columns_labels)
+    
+    else:
+        return data_tensor, labels_tensor, len(columns_data), len(columns_labels)
 
 
 
