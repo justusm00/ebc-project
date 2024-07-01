@@ -74,22 +74,6 @@ data_final = pd.concat(data, axis=0, ignore_index=True)
 
 
 
-####### METEO data
-
-files_meteo = [f for f in os.listdir(PATH) if 'meteo' in f]
-dfs = []
-for f in files_meteo:
-    try: 
-        df = pd.read_csv(PATH+f, sep=',', na_values=['NaN']).drop(0)
-    except pd.errors.ParserError: 
-        # the 2024 files use ';' as separator and ',' as decimal separator
-        df = pd.read_csv(PATH+f, sep=';', na_values=['NaN']).drop(0)
-    dfs.append(df)
-
-for df in dfs:
-    df["kurzwAusstrahlung"] = df[df.filter(regex='kurzwAusstrahlun').columns]
-    df["kurzwEinstrahlung"] = df[df.filter(regex='kurzwEinstrahlun').columns]
-
 
 
 
