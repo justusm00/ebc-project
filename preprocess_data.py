@@ -8,12 +8,14 @@ PATH = 'data/data_files/'
 # numerical values to transform to float
 COLS_NUMERICAL_PREP = ['H_orig', 'LE_orig', 'ET_orig', 'CO2', 'H2O', 'NEE_orig', 'Reco', 'GPP_f', 'Ustar']
 COLS_NUMERICAL_ORIG = ['H_orig', 'LE_orig', 'ET_orig', 'CO2', 'H2O', 'NEE_orig', 'Reco', 'GPP_f', 'Ustar', 'H_f', 'LE_f', 'ET_f', 'NEE_f']
+
 # unnecessary columns to be dropped
 COLS_DROP_PREP = ['TIMESTAMP_START', 'TIMESTAMP_MITTE', 'TIMESTAMP_ENDE', 'H_f', 'LE_f', 'ET_f', 'NEE_f']
 COLS_DROP_ORIG = ['TIMESTAMP_START', 'TIMESTAMP_MITTE', 'TIMESTAMP_ENDE']
 
 # collect files to preprocess
-files = [f for f in os.listdir(PATH) if '.csv' in f]
+files = [f for f in os.listdir(PATH) if 'fluxes' in f]
+
 
 data = []
 count_na = []
@@ -69,6 +71,27 @@ print(f'\nRows removed because of NA: {sum(count_na)}\n')
 
 # combine the preprocessed data into single dataframe
 data_final = pd.concat(data, axis=0, ignore_index=True)
+
+
+
+####### METEO data
+
+files_meteo = [f for f in os.listdir(PATH) if 'meteo' in f]
+dfs = []
+for f in files_meteo:
+    try: 
+        df = pd.read_csv(PATH+f, sep=',', na_values=['NaN']).drop(0)
+    except pd.errors.ParserError: 
+        # the 2024 files use ';' as separator and ',' as decimal separator
+        df = pd.read_csv(PATH+f, sep=';', na_values=['NaN']).drop(0)
+    dfs.append(df)
+
+for df in dfs:
+    df["kurzwAusstrahlung"] = df[df.filter(regex='kurzwAusstrahlun').columns]
+    df["kurzwEinstrahlung"] = df[df.filter(regex='kurzwEinstrahlun').columns]
+
+
+
 
 
 data_final.to_csv('data/data_preprocessed.csv')
