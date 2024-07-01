@@ -7,10 +7,10 @@ from preprocessing_soil import prepare_data
 from soil import fill_thermal_conductivity, compute_soil_heatflux, compute_soil_heatflux2
 
 # read data
-df_flux_fbg = pd.read_csv("data_2024/EddyCovarianceData/eng/FBG_fluxes_30min_20240401_20240608_eng.csv")
-df_flux_goew = pd.read_csv("data_2024/EddyCovarianceData/eng/GoeW_fluxes_30min_20240401_20240608_eng.csv")
-df_meteo_fbg = pd.read_csv("data_2024/MeteorologicalData/eng/FBG_meteo_30min_20240401_20240608_eng.csv")
-df_meteo_goew = pd.read_csv("data_2024/MeteorologicalData/eng/GoeW_meteo_30min_20240401_20240608_eng.csv")
+df_flux_fbg = pd.read_csv("soil/data_2024/EddyCovarianceData/eng/FBG_fluxes_30min_20240401_20240608_eng.csv")
+df_flux_goew = pd.read_csv("soil/data_2024/EddyCovarianceData/eng/GoeW_fluxes_30min_20240401_20240608_eng.csv")
+df_meteo_fbg = pd.read_csv("soil/data_2024/MeteorologicalData/eng/FBG_meteo_30min_20240401_20240608_eng.csv")
+df_meteo_goew = pd.read_csv("soil/data_2024/MeteorologicalData/eng/GoeW_meteo_30min_20240401_20240608_eng.csv")
 
 # relevant columns
 cols_meteo_fbg = ["netRadiation_300cm", "soilHeatFlux"]
@@ -35,9 +35,9 @@ df_meteo_goew = compute_soil_heatflux(df_meteo_goew)
 
 def plot_diurnal_cycles_soil(df):
     df_agg = df.groupby("time").agg(G=("soilHeatflux", "mean"), moisture=("soilMoisture_1_5cm", "mean"), k=("thermalConductivity_5cm_mean", "mean"), dTdz = ("dTdz_mean", "mean"), T1_15cm = ("soilTemperature_1_15cm", "mean")).reset_index()
-    plt.plot(df_agg["time"], df_agg["G"])
+    plt.plot(df_agg["time"], df_agg["k"])
     plt.xticks(df_agg["time"].unique()[::2], rotation = 90)
-    plt.ylabel("$G$")
+    plt.ylabel("$k$")
     plt.tight_layout()
     plt.show()
     return df_agg
