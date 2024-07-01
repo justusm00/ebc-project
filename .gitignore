@@ -1,6 +1,7 @@
 # Custom directories
 ebc-project/
 
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -157,3 +158,13 @@ cython_debug/
 # MacOS specific files
 .DS_Store
 **/.DS_Store
+=======
+.DS_Store
+data_2024/__pycache__/
+data_2024/.DS_Store
+data_2024/MeteorologicalData/.DS_Store
+data_2024/bla.txt
+data_2024/__pycache__/
+data_2024/EddyCovarianceData/.DS_Store
+more_data/
+__pycache__/
