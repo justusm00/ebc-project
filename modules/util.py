@@ -100,6 +100,11 @@ def grab_data(path, columns_data=None, columns_labels=None, num_cpus=1, return_d
     # Load the data from 2023 and 2024 into pandas
     cwd = os.getcwd()
 
+    # extend data columns by necessary columns
+    columns_data.extend(["year", "month", "day", "30min", "location"])
+    # make sure there are not duplicates
+    columns_data = list(set(columns_data))
+
     # load data
     data = pd.read_csv(path)
 
