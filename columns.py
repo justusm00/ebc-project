@@ -4,7 +4,7 @@ COLS_TIME = ["date", "year", "month", "day", "30min", "location"]
 # columns used as labels for mlp training (nan filtering is done based on these)
 COLS_LABELS = ["H_orig", "LE_orig"]
 
-# columns used as features for mlp training (nan filtering is done based on these)
+# columns used as features for mlp training 
 COLS_FEATURES = COLS_TIME + ["incomingShortwaveRadiation", "outgoingShortwaveRadiation", "soilHeatflux", "airPressure",
                  "waterPressureDeficit", "waterVaporPressure", "windSpeed"]
 
