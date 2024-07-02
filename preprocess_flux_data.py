@@ -6,10 +6,11 @@ from modules.util import transform_timestamp, numerical_to_float
 
 PATH = 'data/data_files/'
 # numerical values to transform to float
-COLS_NUMERICAL = ['H_orig', 'LE_orig', 'ET_orig', 'CO2', 'H2O', 'NEE_orig', 'Reco', 'GPP_f', 'Ustar', 'H_f', 'LE_f', 'ET_f', 'NEE_f']
+COLS_NUMERICAL = ['H_orig', 'LE_orig', 'ET_orig', 'CO2', 'H2O', 'NEE_orig', 'GPP_f', 'Ustar', 'H_f', 'LE_f', 'ET_f', 'NEE_f']
 
 # unnecessary columns to be dropped
-COLS_DROP_ORIG = ['TIMESTAMP_START', 'TIMESTAMP_MITTE', 'TIMESTAMP_ENDE']
+# remove Reco because it is already gapfilled
+COLS_DROP_ORIG = ['TIMESTAMP_MITTE', 'TIMESTAMP_ENDE', 'Reco']
 # additional columns to be dropped for training data
 COLS_DROP_PREP = ['H_f', 'LE_f', 'ET_f', 'NEE_f', 'GPP_f']
 
@@ -62,5 +63,5 @@ data_orig_final = pd.concat(data_orig, axis=0, ignore_index=True)
 
 
 
-data_prep_final.to_csv('data/flux_data_preprocessed.csv')
-data_orig_final.to_csv('data/flux_data_preprocessed_gapfilled.csv')
+data_prep_final.to_csv('data/flux_data_preprocessed.csv', index=False)
+data_orig_final.to_csv('data/flux_data_preprocessed_gapfilled.csv', index=False)

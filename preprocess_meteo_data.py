@@ -1,5 +1,5 @@
 import pandas as pd
-from modules.util import numerical_to_float
+from modules.util import numerical_to_float, trainsform_timestamp
 from soil.soil import fill_thermal_conductivity, compute_soil_heatflux
 import matplotlib.pyplot as plt
 
@@ -10,10 +10,12 @@ import matplotlib.pyplot as plt
 ###### Also note that columns for BG and GW do not correspond to the same height, this information is lost here
 ###### But maybe the NN learns this just by the location encoding :))
 
-df1 = pd.read_csv('data/data_files/BG_meteo_30min_20230101_20230801.csv', sep=',', na_values=['NaN']).drop(0) # BG meteo 2023
-df2 = pd.read_csv('data/data_files/GW_meteo_30min_20230101_20230801.csv', sep=',', na_values=['NaN']).drop(0) # GW meteo 2023
-df3 = pd.read_csv('data/data_files/BG_meteo_30min_20240401_20240608.csv', sep=';', na_values=['NaN']).drop(0) # BG meteo 2024
-df4 = pd.read_csv('data/data_files/GW_meteo_30min_20240401_20240608.csv', sep=';', na_values=['NaN']).drop(0) # GW meteo 2024
+PATH = 'data/data_files'
+
+df1 = pd.read_csv(f'{PATH}/BG_meteo_30min_20230101_20230801.csv', sep=',', na_values=['NaN']).drop(0) # BG meteo 2023
+df2 = pd.read_csv(f'{PATH}/GW_meteo_30min_20230101_20230801.csv', sep=',', na_values=['NaN']).drop(0) # GW meteo 2023
+df3 = pd.read_csv(f'{PATH}/BG_meteo_30min_20240401_20240608.csv', sep=';', na_values=['NaN']).drop(0) # BG meteo 2024
+df4 = pd.read_csv(f'{PATH}/GW_meteo_30min_20240401_20240608.csv', sep=';', na_values=['NaN']).drop(0) # GW meteo 2024
 
 df1 = df1.drop(["TIMESTAMP_MITTE", "TIMESTAMP_ENDE"], axis=1)
 df2 = df2.drop(["TIMESTAMP_MITTE", "TIMESTAMP_ENDE"], axis=1)
@@ -111,14 +113,17 @@ df3 = df3[cols]
 df4 = df4[cols]
 
 
-df1["Location"] = 0
-df2["Location"] = 1
-df3["Location"] = 0
-df4["Location"] = 1
+df1["location"] = 0
+df2["location"] = 1
+df3["location"] = 0
+df4["location"] = 1
 
 
 # concat all dataframes
 df = pd.concat([df1, df2, df3, df4])
 
+# transform timestamp
+df = trainsform_timestamp(df)
+
 # save as csv
-df.to_csv('data/meteo_data_preprocessed.csv')
+df.to_csv('data/meteo_data_preprocessed.csv', index=False)
