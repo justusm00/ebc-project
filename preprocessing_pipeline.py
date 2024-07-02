@@ -5,7 +5,7 @@ from tqdm import tqdm
 from soil.soil import fill_thermal_conductivity, compute_soil_heatflux
 from modules.util import transform_timestamp, numerical_to_float
 
-from params import COLS_METEO, COLS_FLUXES, PATH
+from params import COLS_METEO, COLS_FLUXES, COLS_LABELS, COLS_FEATURES, PATH
 
 
 
@@ -217,7 +217,7 @@ def merge_data(df_fluxes, df_meteo):
 
 
 
-def preprocessing_pipeline(path, cols_fluxes, cols_meteo):
+def preprocessing_pipeline(path, cols_fluxes, cols_meteo, cols_labels, cols_features):
     """Preprocessing pipeline to create dataset for Gapfilling MLP.
 
     Args:
@@ -233,9 +233,10 @@ def preprocessing_pipeline(path, cols_fluxes, cols_meteo):
     df_meteo = preprocess_meteo_data(path, cols_meteo)
     df_merged = merge_data(df_meteo, df_fluxes)
 
-    # drop any row containing NA values
+    # drop rows that contain NaN in feature or label row
     len_before = df_merged.__len__()
-    df_merged.dropna(axis=0, how='any', inplace=True, ignore_index=True)
+    df_merged.dropna(axis=0, subset=cols_features, inplace=True, ignore_index=True)
+    df_merged.dropna(axis=0, subset=cols_labels, inplace=True, ignore_index=True)
     na_removed = len_before - df_merged.__len__()
     print(f'\nRows removed because of NA: {na_removed}\n')
 
@@ -246,4 +247,4 @@ def preprocessing_pipeline(path, cols_fluxes, cols_meteo):
 
 
 
-preprocessing_pipeline(PATH, COLS_FLUXES, COLS_METEO)
+preprocessing_pipeline(PATH, COLS_FLUXES, COLS_METEO, COLS_LABELS, COLS_FEATURES)
