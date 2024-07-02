@@ -100,6 +100,7 @@ def grab_data(path, columns_data=None, columns_labels=None, num_cpus=1, return_d
     # Load the data from 2023 and 2024 into pandas
     cwd = os.getcwd()
 
+
     # load data
     data = pd.read_csv(path)
 
@@ -109,7 +110,11 @@ def grab_data(path, columns_data=None, columns_labels=None, num_cpus=1, return_d
     if columns_labels == None:
         columns_labels = ['H_orig', 'LE_orig']
    
-
+    # extend data columns by necessary columns
+    columns_data.extend(["year", "month", "day", "30min", "location"])
+    # make sure there are not duplicates
+    columns_data = list(set(columns_data))
+    
     if return_dataset:
         # Convert to torch tensor
         data_tensor = torch.tensor(data[ columns_data ].values, dtype=torch.float32)
