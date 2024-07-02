@@ -6,6 +6,13 @@ from soil.soil import fill_thermal_conductivity, compute_soil_heatflux
 from modules.util import transform_timestamp, numerical_to_float
 
 
+COLS_FLUXES = ["H_orig", "LE_orig"]
+COLS_METEO = ["incomingShortwaveRadiation", "outgoingShortwaveRadiation", "soilHeatflux", "airPressure", "waterPressureDeficit", "waterVaporPressure", "windSpeed"]
+PATH = 'data/data_files/'
+
+
+######## Script to automate data preprocessing and merging
+
 def preprocess_flux_data(path, cols):
     """Preprocess flux data - transform timestamp, convert numerical columns to float and keep only relevant columns.
 
@@ -240,8 +247,5 @@ def preprocessing_pipeline(path, cols_fluxes, cols_meteo):
     return 
 
 
-cols_fluxes = ["H_orig", "LE_orig"]
-cols_meteo = ["incomingShortwaveRadiation", "outgoingShortwaveRadiation"]
 
-PATH = 'data/data_files/'
-preprocessing_pipeline(PATH, cols_fluxes, cols_meteo)
+preprocessing_pipeline(PATH, COLS_FLUXES, COLS_METEO)
