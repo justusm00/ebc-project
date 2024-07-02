@@ -100,8 +100,8 @@ def grab_data(path, columns_data=None, columns_labels=None, num_cpus=1, return_d
     # Load the data from 2023 and 2024 into pandas
     cwd = os.getcwd()
 
-    data_path = os.path.join( cwd, path )
-    data = pd.read_csv(  data_path )
+    # load data
+    data = pd.read_csv(path)
 
     # Select data and labels
     if columns_data == None:
