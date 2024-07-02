@@ -5,7 +5,7 @@ from tqdm import tqdm
 from soil.soil import fill_thermal_conductivity, compute_soil_heatflux
 from modules.util import transform_timestamp, numerical_to_float
 
-from params import COLS_METEO, COLS_FLUXES, COLS_LABELS, COLS_FEATURES, PATH
+from columns import COLS_METEO, COLS_FLUXES, COLS_LABELS, COLS_FEATURES, COLS_TIME, PATH
 
 
 
@@ -21,12 +21,8 @@ def preprocess_flux_data(path, cols):
     Returns:
         _type_: _description_
     """
-    
-    cols_keep = cols.copy()
-    # extend cols to keep by necessary columns
-    cols_keep.extend(["date", "year", "month", "day", "30min", "location"])
-    # make sure there are no duplicate columns
-    cols_keep = list(set(cols_keep))
+    # exclude time and location columns from list of columns to be converted to float
+    cols_to_convert = [col for col in cols if col not in COLS_TIME]
 
     # collect files to preprocess
     files = [f for f in os.listdir(path) if 'fluxes' in f]
@@ -46,10 +42,10 @@ def preprocess_flux_data(path, cols):
         df['location'] = 0 if 'BG' in f else 1
 
         df = transform_timestamp(df, 'TIMESTAMP_START')
-        df = numerical_to_float(df, cols)
+        df = numerical_to_float(df, cols_to_convert)
 
         # keep only columns of interest
-        df = df[cols_keep]
+        df = df[cols]
 
         data.append(df.copy())
 
@@ -79,8 +75,6 @@ def preprocess_meteo_data(path, cols):
     Returns:
         _type_: _description_
     """
-    # extend cols by necessary columns
-    cols.extend(["date", "year", "month", "day", "30min", "location"])
     # make sure there are no duplicate columns
     cols = list(set(cols))
 
@@ -233,15 +227,17 @@ def preprocessing_pipeline(path, cols_fluxes, cols_meteo, cols_labels, cols_feat
     df_meteo = preprocess_meteo_data(path, cols_meteo)
     df_merged = merge_data(df_meteo, df_fluxes)
 
-    # drop rows that contain NaN in feature or label row
+    # keep only feature and label columns
+    df_merged = df_merged[cols_features + cols_labels]
+
+    # drop nan rows
     len_before = df_merged.__len__()
-    df_merged.dropna(axis=0, subset=cols_features, inplace=True, ignore_index=True)
-    df_merged.dropna(axis=0, subset=cols_labels, inplace=True, ignore_index=True)
+    df_merged.dropna(axis=0, how='any', inplace=True, ignore_index=True)
     na_removed = len_before - df_merged.__len__()
     print(f'\nRows removed because of NA: {na_removed}\n')
 
     # save as csv
-    df_merged.to_csv('data/data_merged_without_nans.csv', index=False)
+    df_merged.to_csv('data/training_data_merged.csv', index=False)
 
     return 
 

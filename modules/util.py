@@ -110,8 +110,6 @@ def grab_data(path, columns_data=None, columns_labels=None, num_cpus=1, return_d
     if columns_labels == None:
         columns_labels = ['H_orig', 'LE_orig']
    
-    # extend data columns by necessary columns
-    columns_data.extend(["year", "month", "day", "30min", "location"])
     # make sure there are not duplicates
     columns_data = list(set(columns_data))
     
