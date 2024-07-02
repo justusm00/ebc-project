@@ -203,7 +203,7 @@ def merge_data(df_fluxes, df_meteo):
     Returns:
         _type_: _description_
     """
-    df = df_meteo.merge(df_fluxes, how="outer", on=["date", "year", "month", "day", "30min", "location"])
+    df = df_meteo.merge(df_fluxes, how="outer", on=COLS_TIME)
     # save as csv
     df.to_csv('data/data_merged_with_nans.csv', index=False)
 

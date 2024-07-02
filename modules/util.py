@@ -97,9 +97,6 @@ def grab_data(path, columns_data=None, columns_labels=None, num_cpus=1, return_d
         Returns datasets as Dataset class for Göttingen forest and Bothanic Garden combined
         or returns the data and labels as pandas.dataframe for model predictions
     """
-    # Load the data from 2023 and 2024 into pandas
-    cwd = os.getcwd()
-
 
     # load data
     data = pd.read_csv(path)
