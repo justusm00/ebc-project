@@ -85,7 +85,7 @@ class EBCDataset(Dataset):
 
 
 # Data loader
-def grab_data(path, columns_data=None, columns_labels=None, num_cpus=1, return_dataset=True):
+def grab_data(path_fluxes, path_meteo, columns_data=None, columns_labels=None, num_cpus=1, return_dataset=True):
     """Loads data from data_dir
 
     Args:
@@ -100,8 +100,14 @@ def grab_data(path, columns_data=None, columns_labels=None, num_cpus=1, return_d
     # Load the data from 2023 and 2024 into pandas
     cwd = os.getcwd()
 
-    data_path = os.path.join( cwd, path )
-    data = pd.read_csv(  data_path )
+    # load flux and meteo data
+    data_path_fluxes = os.path.join( cwd, path_fluxes )
+    data_path_meteo = os.path.join( cwd, path_meteo )
+    df_fluxes = pd.read_csv(  data_path_fluxes )
+    df_meteo = pd.read_csv( data_path_meteo)
+
+    # merge
+    data = df_meteo.merge(df_fluxes, how="outer", on=["date", "year", "month", "day", "30min", "location"])
 
     # Select data and labels
     if columns_data == None:
