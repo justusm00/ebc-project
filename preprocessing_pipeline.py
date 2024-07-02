@@ -5,10 +5,8 @@ from tqdm import tqdm
 from soil.soil import fill_thermal_conductivity, compute_soil_heatflux
 from modules.util import transform_timestamp, numerical_to_float
 
+from params import COLS_METEO, COLS_FLUXES, PATH
 
-COLS_FLUXES = ["H_orig", "LE_orig"]
-COLS_METEO = ["incomingShortwaveRadiation", "outgoingShortwaveRadiation", "soilHeatflux", "airPressure", "waterPressureDeficit", "waterVaporPressure", "windSpeed"]
-PATH = 'data/data_files/'
 
 
 ######## Script to automate data preprocessing and merging
