@@ -246,7 +246,7 @@ def run_training(model, optimizer, num_epochs, train_dataloader, val_dataloader,
             ES.save_model(model)
             
         if scheduler:
-            scheduler.step()
+            scheduler.step(epoch_val_loss)
 
     time_elapsed = np.round(time.time() - start_time, 0).astype(int)
     print(f'Finished training after {time_elapsed} seconds.')
