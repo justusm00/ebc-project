@@ -1,5 +1,5 @@
 # time and location columns, don't change this
-COLS_TIME = ["year", "month", "day", "30min", "location"]
+COLS_TIME = ["year", "month", "day", "30min", "day_of_year", "location"]
 
 # columns used as labels for mlp training (nan filtering is done based on these)
 COLS_LABELS = ["H_orig", "LE_orig"]

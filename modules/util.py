@@ -35,6 +35,7 @@ def transform_timestamp(df, col_name):
     df['year'] = df[f'{col_name}'].apply(lambda x: pd.to_datetime(x, format='%Y-%m-%d %H:%M:%S').year)
     df['month'] = df[f'{col_name}'].apply(lambda x: pd.to_datetime(x, format='%Y-%m-%d %H:%M:%S').month)
     df['day'] = df[f'{col_name}'].apply(lambda x: pd.to_datetime(x, format='%Y-%m-%d %H:%M:%S').day)
+    df['day_of_year'] = df['date'].dt.dayofyear
 
     """
     Robin: Encode the 30 minute intervals using integers
