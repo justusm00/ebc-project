@@ -1,17 +1,9 @@
-import os
-import time
-
 import numpy as np
 import pandas as pd
-import seaborn as sns
-import matplotlib.pyplot as plt
 
 import torch
-import torch.nn as nn
-import torch.optim as optim
-import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
-import fastprogress
+from columns import COLS_FEATURES, COLS_LABELS, COLS_TIME
 
 
 def encode_timestamp(timestamp):
@@ -227,4 +219,3 @@ class EarlyStopper:
     def load_checkpoint(self):
         model = torch.jit.load(self.path)
         return model
-    # define more methods required to make `EarlyStopper` functional
