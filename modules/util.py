@@ -177,3 +177,55 @@ def data_loaders(trainset, valset, testset, batch_size=64, num_cpus=1):
                                              num_workers=num_cpus)
     return trainloader, valloader, testloader
 
+
+
+class EarlyStopper:
+    """Early stops the training if validation accuracy does not increase after a
+    given patience. Saves and loads model checkpoints.
+    """
+    def __init__(self, verbose=False, path='checkpoint.pt', patience=1):
+        """Initialization.
+
+        Args:
+            verbose (bool, optional): Print additional information. Defaults to False.
+            path (str, optional): Path where checkpoints should be saved. 
+                Defaults to 'checkpoint.pt'.
+            patience (int, optional): Number of epochs to wait for increasing
+                accuracy. If accuracy does not increase, stop training early. 
+                Defaults to 1.
+        """
+        ####################
+        self.verbose = verbose
+        self.path = path
+        self.patience = patience
+        self.counter = 0
+        ####################
+
+    @property
+    def early_stop(self):
+        """True if early stopping criterion is reached.
+
+        Returns:
+            [bool]: True if early stopping criterion is reached.
+        """
+        if self.counter == self.patience:
+            return True
+
+    def save_model(self, model):
+        # scripted save
+        model_scripted = torch.jit.script(model) # Export to TorchScript
+        model_scripted.save(self.path)
+        return
+        
+    def check_criterion(self, acc_val_new, acc_val_old):
+        if acc_val_old >= acc_val_new:
+            self.counter += 1
+        else:
+            self.counter = 0
+        
+        return
+    
+    def load_checkpoint(self):
+        model = torch.jit.load(self.path)
+        return model
+    # define more methods required to make `EarlyStopper` functional
