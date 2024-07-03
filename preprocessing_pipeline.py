@@ -80,8 +80,8 @@ def preprocess_meteo_data(path, cols):
 
     df1 = pd.read_csv(f'{path}BG_meteo_30min_20230101_20230801.csv', sep=',', na_values=['NaN']).drop(0) # BG meteo 2023
     df2 = pd.read_csv(f'{path}GW_meteo_30min_20230101_20230801.csv', sep=',', na_values=['NaN']).drop(0) # GW meteo 2023
-    df3 = pd.read_csv(f'{path}BG_meteo_30min_20240401_20240608.csv', sep=';', na_values=['NaN']).drop(0) # BG meteo 2024
-    df4 = pd.read_csv(f'{path}GW_meteo_30min_20240401_20240608.csv', sep=';', na_values=['NaN']).drop(0) # GW meteo 2024
+    df3 = pd.read_csv(f'{path}BG_meteo_30min_20240401_20240701.csv', sep=';', na_values=['NaN']).drop(0) # BG meteo 2024
+    df4 = pd.read_csv(f'{path}GW_meteo_30min_20240401_20240701.csv', sep=';', na_values=['NaN']).drop(0) # GW meteo 2024
 
     df1 = df1.drop(["TIMESTAMP_MITTE", "TIMESTAMP_ENDE"], axis=1)
     df2 = df2.drop(["TIMESTAMP_MITTE", "TIMESTAMP_ENDE"], axis=1)
