@@ -217,8 +217,8 @@ class EarlyStopper:
         model_scripted.save(self.path)
         return
         
-    def check_criterion(self, acc_val_new, acc_val_old):
-        if acc_val_old >= acc_val_new:
+    def check_criterion(self, loss_val_new, loss_val_old):
+        if loss_val_old <= loss_val_new:
             self.counter += 1
         else:
             self.counter = 0
