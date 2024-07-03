@@ -172,13 +172,16 @@ def data_loaders(trainset, valset, testset, batch_size=64, num_cpus=1):
 
 
 def gap_filling_mlp(path_model, path_data, columns_data, columns_labels):
-    """Function to perform gap filling using the previously trained MLP
+    """Perform gap filling using pre-trained MLP
 
     Args:
-        model (_type_): _description_
-        path_data (_type_): _description_
-        columns_data (_type_): _description_
-        columns_labels (_type_): _description_
+        path_model (str): path to MLP parameter file
+        path_data (str): path to data containing gaps
+        columns_data (list of str): list of columns used as features
+        columns_labels (list of str): list of columns used as labels 
+
+    Returns:
+        Dataframe with gap filled columns in columns_labels. Gap filled columns are called <col_name>_f_mlp.
     """
     input, target, dim_in, dim_out = grab_data(path_data, columns_data=columns_data,
                                                columns_labels=columns_labels, return_dataset = False )
