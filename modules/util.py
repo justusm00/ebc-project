@@ -4,6 +4,7 @@ import pandas as pd
 import torch
 from torch.utils.data import Dataset, DataLoader
 from columns import COLS_FEATURES, COLS_LABELS, COLS_TIME
+from MLPstuff import MLP
 
 
 def encode_timestamp(timestamp):
@@ -219,3 +220,53 @@ class EarlyStopper:
     def load_checkpoint(self):
         model = torch.jit.load(self.path)
         return model
+
+
+def gap_filling_mlp(path_model, path_data, columns_data, columns_labels):
+    """Function to perform gap filling using the previously trained MLP
+
+    Args:
+        model (_type_): _description_
+        path_data (_type_): _description_
+        columns_data (_type_): _description_
+        columns_labels (_type_): _description_
+    """
+    input, target, dim_in, dim_out = grab_data(path_data, columns_data=columns_data,
+                                               columns_labels=columns_labels, return_dataset = False )
+    data = pd.concat([input, target], axis=1)
+    # Load the model
+    model = MLP(dim_in, dim_out, num_hidden_units=30, num_hidden_layers=4)
+    model.load_state_dict(torch.load(path_model))
+    # identify rows where labels are NaN, but features aren't
+    mask_nan = data[columns_data].isna().any(axis=1)
+    mask_not_nan = data[columns_labels].notna().all(axis=1)
+
+    # Combine the masks
+    combined_mask = mask_nan & mask_not_nan
+
+    # data used for prediction
+    input = data[combined_mask][columns_labels].reset_index(drop=True)
+
+    # transform input into torch.tensor and make predictions
+    input_tensor = torch.tensor(input.values, dtype=torch.float32)
+
+    with torch.no_grad():
+        pred = model(input_tensor).numpy() #  Transform back to numpy 
+    # create dataframe of predictions with target rows and the indices of the missing values
+    pred = pd.DataFrame(pred, columns=target.columns)
+
+    # merge predictions onto features
+    data_pred = pd.concat([input, pred], axis=1)
+
+
+    # create original dataframe
+    data_orig = data[~mask_nan].reset_index(drop=True)
+
+    # merge both dataframes
+    data_merged = pd.concat([data_orig, data_pred])
+
+    # rename columns 
+    data_final = data_merged.rename(columns={col: col + '_f_mlp' for col in columns_labels})
+
+    return data_final
+
