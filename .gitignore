@@ -175,3 +175,6 @@ soil/data_2023/Meteo/.DS_Store
 soil/data_2023/Meteo/.DS_Store
 more_data/
 __pycache__/
+
+# checkpoint files
+checkpoint.pt
