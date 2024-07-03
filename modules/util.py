@@ -187,14 +187,14 @@ def gap_filling_mlp(path_model, path_data, columns_data, columns_labels):
     model = MLP(dim_in, dim_out, num_hidden_units=30, num_hidden_layers=4)
     model.load_state_dict(torch.load(path_model))
     # identify rows where labels are NaN, but features aren't
-    mask_nan = data[columns_data].isna().any(axis=1)
-    mask_not_nan = data[columns_labels].notna().all(axis=1)
+    mask_nan = data[columns_labels].isna().any(axis=1)
+    mask_not_nan = data[columns_data].notna().all(axis=1)
 
     # Combine the masks
     combined_mask = mask_nan & mask_not_nan
 
     # data used for prediction
-    input = data[combined_mask][columns_labels].reset_index(drop=True)
+    input = data[combined_mask][columns_data].reset_index(drop=True)
 
     # transform input into torch.tensor and make predictions
     input_tensor = torch.tensor(input.values, dtype=torch.float32)
@@ -215,7 +215,6 @@ def gap_filling_mlp(path_model, path_data, columns_data, columns_labels):
     data_merged = pd.concat([data_orig, data_pred])
 
     # rename columns 
-    data_final = data_merged.rename(columns={col: col + '_f_mlp' for col in columns_labels})
+    data_final = data_merged.rename(columns={col: col.replace('_orig', '') + '_f_mlp' for col in columns_labels})
 
     return data_final
-
