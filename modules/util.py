@@ -201,8 +201,9 @@ def gap_filling_mlp(path_model, path_data, columns_data, columns_labels):
 
     with torch.no_grad():
         pred = model(input_tensor).numpy() #  Transform back to numpy 
-    # create dataframe of predictions with target rows and the indices of the missing values
-    pred = pd.DataFrame(pred, columns=target.columns)
+
+    # create dataframe of predictions 
+    pred = pd.DataFrame(pred, columns=columns_labels)
 
     # merge predictions onto features
     data_pred = pd.concat([input, pred], axis=1)
