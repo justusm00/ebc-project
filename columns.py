@@ -6,9 +6,9 @@ COLS_DAYOFYEAR = ["day_of_year"]
 COLS_LABELS = ["H_orig", "LE_orig"]
 
 # columns used as features for mlp training 
-# COLS_FEATURES = COLS_TIME + ["incomingShortwaveRadiation", "outgoingShortwaveRadiation", "soilHeatflux", "airPressure",
-#                  "waterPressureDeficit", "waterVaporPressure", "windSpeed"]
-COLS_FEATURES = COLS_TIME + ["incomingShortwaveRadiation", "soilHeatflux", "waterPressureDeficit", "windSpeed"] # Results from importance analysis
+COLS_FEATURES = COLS_TIME + ["incomingShortwaveRadiation", "outgoingShortwaveRadiation", "soilHeatflux", "airPressure",
+                 "waterPressureDeficit", "waterVaporPressure", "windSpeed"]
+# COLS_FEATURES = COLS_TIME + ["incomingShortwaveRadiation", "soilHeatflux", "waterPressureDeficit", "windSpeed"] # Results from importance analysis
 
 # columns to keep from flux data
 # allowed columns: "H_orig", "LE_orig", "H_f", "LE_f", 'CO2', 'H2O', 'Ustar', 'Reco'

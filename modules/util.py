@@ -108,9 +108,7 @@ def grab_data(path, columns_data=None, columns_labels=None, num_cpus=1, return_d
     if columns_labels == None:
         columns_labels = ['H_orig', 'LE_orig']
    
-    # make sure there are not duplicates
-    columns_data = list(set(columns_data))
-    
+
     if return_dataset:
         # Convert to torch tensor
         data_tensor = torch.tensor(data[ columns_data ].values, dtype=torch.float32)

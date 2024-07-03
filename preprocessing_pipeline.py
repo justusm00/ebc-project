@@ -75,8 +75,6 @@ def preprocess_meteo_data(path, cols):
     Returns:
         _type_: _description_
     """
-    # make sure there are no duplicate columns
-    cols = list(set(cols))
 
     df1 = pd.read_csv(f'{path}BG_meteo_30min_20230101_20230801.csv', sep=',', na_values=['NaN']).drop(0) # BG meteo 2023
     df2 = pd.read_csv(f'{path}GW_meteo_30min_20230101_20230801.csv', sep=',', na_values=['NaN']).drop(0) # GW meteo 2023
