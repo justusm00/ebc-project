@@ -13,6 +13,8 @@ import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
 import fastprogress
 
+from modules.util import EarlyStopper
+
 # MLP definition
 class MLP(nn.Module):
    # Multi layer perceptron torch model
@@ -91,33 +93,30 @@ def train(dataloader, optimizer, model, master_bar, device, loss_fn = nn.MSELoss
     Returns:
         Mean epoch loss and accuracy
     """
-    loss = []
-    total_prediction_error = 0
+    losses = []  # Use a list to store individual batch losses
 
     for x, y in fastprogress.progress_bar(dataloader, parent=master_bar):
-        # Reset optimmizers
         optimizer.zero_grad()
         model.train()
 
         # Forward pass
         y_pred = model(x.to(device))
 
-        # For calculating the prediction error, add the distance between y and y_pred
-        # to the total error
-        #total_prediction_error += prediction_error(y, y_pred)
-
         # Compute loss
-        epoch_loss = loss_fn(y_pred, y.to(device))
+        batch_loss = loss_fn(y_pred, y.to(device))
 
         # Backward pass
-        epoch_loss.backward()
+        batch_loss.backward()
         optimizer.step()
 
-        # For plotting the train loss, save it for each sample
-        loss.append(epoch_loss.item())
+        # Save the batch loss for logging purposes
+        losses.append(batch_loss.item())
 
-    # Return the mean loss and the accuracy of this epoch
-    return np.mean(loss), total_prediction_error
+    # Calculate the mean loss for the epoch
+    mean_loss = np.mean(losses)
+
+    # Return the mean loss for the epoch
+    return mean_loss
 
 
 
@@ -137,17 +136,12 @@ def validate(dataloader, model, master_bar, device, loss_fn=nn.MSELoss()):
         Mean loss and total prediction error on validation set
     """
     epoch_loss = []
-    total_prediction_error = 0  
 
     model.eval()
     with torch.no_grad():
         for x, y in fastprogress.progress_bar(dataloader, parent=master_bar):
             # make a prediction on validation set
             y_pred = model(x.to(device))
-
-            # For calculating the prediction error, add the distance between y and y_pred
-            # to the total error
-            #total_prediction_error += prediction_error(y, y_pred)
 
             # Compute loss
             loss = loss_fn(y_pred, y.to(device))
@@ -156,7 +150,7 @@ def validate(dataloader, model, master_bar, device, loss_fn=nn.MSELoss()):
             epoch_loss.append(loss.item())
 
     # Return the mean loss, the accuracy and the confusion matrix
-    return np.mean(epoch_loss), total_prediction_error
+    return np.mean(epoch_loss)
 
 
 
@@ -200,7 +194,7 @@ def plot(title, label, train_results, val_results, yscale='linear', save_path=No
 
 
 def run_training(model, optimizer, num_epochs, train_dataloader, val_dataloader, device, 
-                 loss_fn=nn.MSELoss(), verbose=False):
+                 loss_fn=nn.MSELoss(), patience=1, early_stopper=None, scheduler=None, verbose=False):
     """Run model training.
 
     Args:
@@ -217,28 +211,46 @@ def run_training(model, optimizer, num_epochs, train_dataloader, val_dataloader,
     """
     start_time = time.time()
     master_bar = fastprogress.master_bar(range(num_epochs))
-    train_losses, val_losses, train_tpes, val_tpes = [],[],[],[]
+    train_losses, val_losses = [],[]
+
+    if early_stopper:
+        ES = EarlyStopper(verbose=verbose, patience = patience)
+
+    # initialize old loss value varibale
+    val_loss_old = 0
 
     for epoch in master_bar:
         # Train the model
-        epoch_train_loss, epoch_train_tpe = train(dataloader=train_dataloader, optimizer=optimizer, model=model, 
+        epoch_train_loss = train(dataloader=train_dataloader, optimizer=optimizer, model=model, 
                                                  master_bar=master_bar, device=device, loss_fn=loss_fn)
         # Validate the model
-        epoch_val_loss, epoch_val_tpe = validate(val_dataloader, model, master_bar, device, loss_fn)
+        epoch_val_loss = validate(val_dataloader, model, master_bar, device, loss_fn)
 
         # Save loss and acc for plotting
         train_losses.append(epoch_train_loss)
         val_losses.append(epoch_val_loss)
-        train_tpes.append(epoch_train_tpe)
-        val_tpes.append(epoch_val_tpe)
         
         if verbose:
-            master_bar.write(f'Train loss: {epoch_train_loss:.2f}, val loss: {epoch_val_loss:.2f}, train acc: {epoch_train_tpe:.3f}, val acc {epoch_val_tpe:.3f}')
+            master_bar.write(f'Train loss: {epoch_train_loss:.2f}, val loss: {epoch_val_loss:.2f}')
+
+        if early_stopper and epoch != 0:
+            
+            ES.check_criterion(epoch_val_loss, val_loss_old)
+            if ES.early_stop:
+                print("Early stopping")
+                model = ES.load_checkpoint()
+                break
+        # Save biggest
+        if early_stopper and epoch_val_loss > val_loss_old:
+            val_loss_old = epoch_val_loss
+            ES.save_model(model)
+            
+        if scheduler:
+            scheduler.step()
 
     time_elapsed = np.round(time.time() - start_time, 0).astype(int)
     print(f'Finished training after {time_elapsed} seconds.')
 
     plot("Loss", "Loss", train_losses, val_losses)
-    #plot("TPE", "TPE", train_tpes, val_tpes)
 
-    return train_losses, val_losses, train_tpes, val_tpes
+    return train_losses, val_losses
