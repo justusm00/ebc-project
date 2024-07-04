@@ -6,6 +6,8 @@ from soil.soil import fill_thermal_conductivity, compute_soil_heatflux
 from modules.util import transform_timestamp, numerical_to_float
 
 from columns import COLS_METEO, COLS_FLUXES, COLS_LABELS, COLS_FEATURES, COLS_TIME, PATH, COLS_DAYOFYEAR
+from sklearn.model_selection import train_test_split
+
 
 
 
@@ -209,7 +211,7 @@ def merge_data(df_fluxes, df_meteo):
 
 
 
-def preprocessing_pipeline(path, cols_fluxes, cols_meteo, cols_labels, cols_features):
+def preprocessing_pipeline(path, cols_fluxes, cols_meteo, cols_labels, cols_features, test_size=0.2, random_state=42):
     """Preprocessing pipeline to create dataset for Gapfilling MLP.
 
     Args:
@@ -234,8 +236,19 @@ def preprocessing_pipeline(path, cols_fluxes, cols_meteo, cols_labels, cols_feat
     na_removed = len_before - df_merged.__len__()
     print(f'\nRows removed because of NA: {na_removed}\n')
 
+    # do train test split
+    # Define features and target
+    X = df_merged.drop(COLS_LABELS, axis=1)  # Features
+    y = df_merged[COLS_LABELS]  # Target
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=random_state)
+    # concatenate again
+    df_train = pd.concat([X_train, y_train], axis=1)
+    df_test = pd.concat([X_test, y_test], axis=1)
+
+
     # save as csv
-    df_merged.to_csv('data/training_data_merged.csv', index=False)
+    df_train.to_csv('data/training_data.csv', index=False)
+    df_test.to_csv('data/test_data.csv', index=False)
 
     return 
 
