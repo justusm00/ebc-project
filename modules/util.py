@@ -107,9 +107,6 @@ def grab_data(path, columns_data=None, columns_labels=None, num_cpus=1, return_d
         columns_data = ['CO2', 'H2O', 'Ustar', 'location', 'year', 'month', 'day', '30min']
     if columns_labels == None:
         columns_labels = ['H_orig', 'LE_orig']
-   
-    # make sure there are not duplicates
-    columns_data = list(set(columns_data))
     
     if return_dataset:
         # Convert to torch tensor
@@ -167,15 +164,15 @@ def data_loaders(trainset, valset, testset, batch_size=64, num_cpus=1):
     trainloader = torch.utils.data.DataLoader(trainset,
                                               batch_size=batch_size,
                                               shuffle=True,
-                                              num_workers=num_cpus)
+                                              num_workers=num_cpus, pin_memory=True)
     valloader = torch.utils.data.DataLoader(valset, 
                                             batch_size=batch_size,
                                             shuffle=True,
-                                            num_workers=num_cpus)
+                                            num_workers=num_cpus, pin_memory=True)
     testloader = torch.utils.data.DataLoader(testset,
                                              batch_size=batch_size,
                                              shuffle=True, 
-                                             num_workers=num_cpus)
+                                             num_workers=num_cpus, pin_memory=True)
     return trainloader, valloader, testloader
 
 
