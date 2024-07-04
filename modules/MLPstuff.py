@@ -98,10 +98,10 @@ def train(dataloader, optimizer, model, master_bar, device, loss_fn = nn.MSELoss
         model.train()
 
         # Forward pass
-        y_pred = model(x.to(device))
+        y_pred = model(x.to(device, non_blocking=True))
 
         # Compute loss
-        batch_loss = loss_fn(y_pred, y.to(device))
+        batch_loss = loss_fn(y_pred, y.to(device, non_blocking=True))
 
         # Backward pass
         batch_loss.backward()
@@ -139,10 +139,10 @@ def validate(dataloader, model, master_bar, device, loss_fn=nn.MSELoss()):
     with torch.no_grad():
         for x, y in fastprogress.progress_bar(dataloader, parent=master_bar):
             # make a prediction on validation set
-            y_pred = model(x.to(device))
+            y_pred = model(x.to(device, non_blocking=True))
 
             # Compute loss
-            loss = loss_fn(y_pred, y.to(device))
+            loss = loss_fn(y_pred, y.to(device, non_blocking=True))
 
             # For plotting the train loss, save it for each sample
             epoch_loss.append(loss.item())
@@ -244,7 +244,7 @@ def run_training(model, optimizer, num_epochs, train_dataloader, val_dataloader,
             ES.save_model(model)
             
         if scheduler:
-            scheduler.step()
+            scheduler.step(epoch_val_loss)
 
     time_elapsed = np.round(time.time() - start_time, 0).astype(int)
     print(f'Finished training after {time_elapsed} seconds.')

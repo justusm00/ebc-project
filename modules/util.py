@@ -158,15 +158,15 @@ def data_loaders(trainset, valset, testset, batch_size=64, num_cpus=1):
     trainloader = torch.utils.data.DataLoader(trainset,
                                               batch_size=batch_size,
                                               shuffle=True,
-                                              num_workers=num_cpus)
+                                              num_workers=num_cpus, pin_memory=True)
     valloader = torch.utils.data.DataLoader(valset, 
                                             batch_size=batch_size,
                                             shuffle=True,
-                                            num_workers=num_cpus)
+                                            num_workers=num_cpus, pin_memory=True)
     testloader = torch.utils.data.DataLoader(testset,
                                              batch_size=batch_size,
                                              shuffle=True, 
-                                             num_workers=num_cpus)
+                                             num_workers=num_cpus, pin_memory=True)
     return trainloader, valloader, testloader
 
 
