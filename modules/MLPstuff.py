@@ -13,8 +13,6 @@ import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
 import fastprogress
 
-from modules.util import EarlyStopper
-
 # MLP definition
 class MLP(nn.Module):
    # Multi layer perceptron torch model
@@ -254,3 +252,56 @@ def run_training(model, optimizer, num_epochs, train_dataloader, val_dataloader,
     plot("Loss", "Loss", train_losses, val_losses)
 
     return train_losses, val_losses
+
+
+
+
+class EarlyStopper:
+    """Early stops the training if validation accuracy does not increase after a
+    given patience. Saves and loads model checkpoints.
+    """
+    def __init__(self, verbose=False, path='checkpoint.pt', patience=1):
+        """Initialization.
+
+        Args:
+            verbose (bool, optional): Print additional information. Defaults to False.
+            path (str, optional): Path where checkpoints should be saved. 
+                Defaults to 'checkpoint.pt'.
+            patience (int, optional): Number of epochs to wait for increasing
+                accuracy. If accuracy does not increase, stop training early. 
+                Defaults to 1.
+        """
+        ####################
+        self.verbose = verbose
+        self.path = path
+        self.patience = patience
+        self.counter = 0
+        ####################
+
+    @property
+    def early_stop(self):
+        """True if early stopping criterion is reached.
+
+        Returns:
+            [bool]: True if early stopping criterion is reached.
+        """
+        if self.counter == self.patience:
+            return True
+
+    def save_model(self, model):
+        # scripted save
+        model_scripted = torch.jit.script(model) # Export to TorchScript
+        model_scripted.save(self.path)
+        return
+        
+    def check_criterion(self, loss_val_new, loss_val_old):
+        if loss_val_old <= loss_val_new:
+            self.counter += 1
+        else:
+            self.counter = 0
+        
+        return
+    
+    def load_checkpoint(self):
+        model = torch.jit.load(self.path)
+        return model
