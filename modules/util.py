@@ -3,9 +3,9 @@ import pandas as pd
 
 import torch
 from torch.utils.data import Dataset, DataLoader
-import torchvision.transforms as transforms
 from columns import COLS_FEATURES, COLS_LABELS, COLS_TIME
 from modules.MLPstuff import MLP
+import json
 
 
 
@@ -86,16 +86,18 @@ class EBCDataset(Dataset):
 
 # Data loader
 def grab_data(path_train, path_test, num_cpus, columns_data=None, columns_labels=None, normalization=False):
-    """Loads data from data_dir
+    """Loads training and test data from respective directories. 
 
     Args:
-        data_dir (str): Directory to store data
-        num_cpus (int, optional): Number of cpus that should be used to 
-            preprocess data. Defaults to 1.
+        path_train (_type_): _description_
+        path_test (_type_): _description_
+        num_cpus (_type_): _description_
+        columns_data (_type_, optional): _description_. Defaults to None.
+        columns_labels (_type_, optional): _description_. Defaults to None.
+        normalization (bool, optional): _description_. Defaults to False.
 
     Returns:
-        Returns datasets as Dataset class for Göttingen forest and Bothanic Garden combined
-        or returns the data and labels as pandas.dataframe for model predictions
+        _type_: _description_
     """
 
     # load data
@@ -141,13 +143,15 @@ def grab_data(path_train, path_test, num_cpus, columns_data=None, columns_labels
 
 # dataset Splitter 
 def train_val_splitter(dataset, split_seed=42, val_frac = 0.2):
-    """ Splits given dataset into train, val and test datasets
+    """Splits the given dataset into training and validation sets.
 
     Args:
-        dataset: the given dataset
-        split_seed: the seed used for the rng
-        test_frac: fraction of data used for testing
-        val_frac_ fraction of training data used for validation
+        dataset (_type_): _description_
+        split_seed (int, optional): _description_. Defaults to 42.
+        val_frac (float, optional): _description_. Defaults to 0.2.
+
+    Returns:
+        _type_: _description_
     """
     
     # Train Val Split
@@ -188,24 +192,23 @@ def data_loaders(trainset, valset, testset, batch_size=64, num_cpus=1):
 
 
 
-def gap_filling_mlp(path_model, path_data, columns_data, columns_labels):
-    """Perform gap filling using pre-trained MLP
+def gap_filling_mlp(data, model, columns_data, columns_labels, means=None, stds=None):
+    """Fill gaps using pretrained model.
 
     Args:
-        path_model (str): path to MLP parameter file
-        path_data (str): path to data containing gaps
-        columns_data (list of str): list of columns used as features
-        columns_labels (list of str): list of columns used as labels 
+        data (pd.DataFrame): Pandas dataframe containing prediction data
+        model (modules.MLPstuff.MLP): model
+        columns_data (list): list of column names used for training
+        columns_labels (list): list of column names to predict
+        means (list, optional): List of means, must be provided if training was done on normalized data. Defaults to None.
+        stds (list, optional): List of standard deviations, must be provided if training was done on normalized data. Defaults to None.
 
     Returns:
-        Dataframe with gap filled columns in columns_labels. Gap filled columns are called <col_name>_f_mlp.
+        pd.DataFrame: Dataframe containing the original data and the MLP gap filled data.
     """
-    input, target, dim_in, dim_out = grab_data(path_data, columns_data=columns_data,
-                                               columns_labels=columns_labels, return_dataset = False )
-    data = pd.concat([input, target], axis=1)
-    # Load the model
-    model = MLP(dim_in, dim_out, num_hidden_units=30, num_hidden_layers=4)
-    model.load_state_dict(torch.load(path_model))
+
+    if ((means is None) and (stds is not None)) or ((stds is None) and (means is not None)) :
+        raise ValueError("Must specify either means and stds or none of them.")
     # identify rows where labels are NaN, but features aren't
     mask_nan = data[columns_labels].isna().any(axis=1)
     mask_not_nan = data[columns_data].notna().all(axis=1)
@@ -218,6 +221,12 @@ def gap_filling_mlp(path_model, path_data, columns_data, columns_labels):
 
     # transform input into torch.tensor and make predictions
     input_tensor = torch.tensor(input.values, dtype=torch.float32)
+
+    # normalize
+    if means is not None and stds is not None:
+        means = torch.tensor(means)
+        stds = torch.tensor(stds)
+        input_tensor = (input_tensor - means) / stds
 
     with torch.no_grad():
         pred = model(input_tensor).numpy() #  Transform back to numpy 
