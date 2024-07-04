@@ -5,7 +5,7 @@ from tqdm import tqdm
 from soil.soil import fill_thermal_conductivity, compute_soil_heatflux
 from modules.util import transform_timestamp, numerical_to_float
 
-from columns import COLS_METEO, COLS_FLUXES, COLS_LABELS, COLS_FEATURES, COLS_TIME, PATH
+from columns import COLS_METEO, COLS_FLUXES, COLS_LABELS, COLS_FEATURES, COLS_TIME, PATH, COLS_DAYOFYEAR
 
 
 
@@ -22,7 +22,7 @@ def preprocess_flux_data(path, cols):
         _type_: _description_
     """
     # exclude time and location columns from list of columns to be converted to float
-    cols_to_convert = [col for col in cols if col not in COLS_TIME]
+    cols_to_convert = [col for col in cols if col not in COLS_TIME+COLS_DAYOFYEAR]
 
     # collect files to preprocess
     files = [f for f in os.listdir(path) if 'fluxes' in f]
@@ -201,7 +201,7 @@ def merge_data(df_fluxes, df_meteo):
     Returns:
         _type_: _description_
     """
-    df = df_meteo.merge(df_fluxes, how="outer", on=COLS_TIME)
+    df = df_meteo.merge(df_fluxes, how="outer", on=COLS_TIME+COLS_DAYOFYEAR)
     # save as csv
     df.to_csv('data/data_merged_with_nans.csv', index=False)
 
@@ -241,4 +241,4 @@ def preprocessing_pipeline(path, cols_fluxes, cols_meteo, cols_labels, cols_feat
 
 
 
-preprocessing_pipeline(PATH, COLS_FLUXES, COLS_METEO, COLS_LABELS, COLS_FEATURES)
+preprocessing_pipeline(PATH, COLS_FLUXES+COLS_DAYOFYEAR, COLS_METEO+COLS_DAYOFYEAR, COLS_LABELS+COLS_DAYOFYEAR, COLS_FEATURES+COLS_DAYOFYEAR)
