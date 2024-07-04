@@ -3,6 +3,7 @@ import pandas as pd
 
 import torch
 from torch.utils.data import Dataset, DataLoader
+import torchvision.transforms as transforms
 from columns import COLS_FEATURES, COLS_LABELS, COLS_TIME
 from modules.MLPstuff import MLP
 
@@ -79,7 +80,7 @@ class EBCDataset(Dataset):
 
 
 # Data loader
-def grab_data(path, columns_data=None, columns_labels=None, num_cpus=1, return_dataset=True):
+def grab_data(path, columns_data=None, columns_labels=None, normalization=False, return_dataset=True):
     """Loads data from data_dir
 
     Args:
@@ -107,10 +108,29 @@ def grab_data(path, columns_data=None, columns_labels=None, num_cpus=1, return_d
         data_tensor = torch.tensor(data[ columns_data ].values, dtype=torch.float32)
         labels_tensor = torch.tensor(data[ columns_labels].values, dtype=torch.float32)
 
+        if normalization: # normalize to [-1,1]
+            data_mean = data_tensor.mean(dim=0)
+            data_std = data_tensor.std(dim=0)
+
+            labels_mean = labels_tensor.mean(dim=0)
+            labels_std = labels_tensor.std(dim=0)
+
+            transform_data = transforms.Compose([ transforms.Normalize(data_mean, data_std) ])
+            transform_label = transforms.Compose([ transforms.Normalize(labels_mean, labels_tensor) ])
+
+            data_tensor = transform_data( data_tensor )
+            labels_tensor = transform_label( labels_tensor )
+
         dataset = EBCDataset(data_tensor, labels_tensor)
         return dataset, len(columns_data), len(columns_labels)
     
     else:
+        if normalization:
+            df_mean = data.mean()
+            df_std = data.std()
+
+            data = (data - df_mean) / df_std
+
         return data[columns_data], data[columns_labels], len(columns_data), len(columns_labels)
 
 
