@@ -5,8 +5,8 @@ from tqdm import tqdm
 from soil.soil import fill_thermal_conductivity, compute_soil_heatflux
 from modules.util import transform_timestamp, numerical_to_float
 
-from columns import COLS_METEO, COLS_FLUXES, COLS_LABELS, COLS_FEATURES, COLS_TIME
-from paths import PATH_RAW, PATH_PREPROCESSED, PATH_MLP_TRAINING, COLS_DAYOFYEAR
+from columns import COLS_METEO, COLS_FLUXES, COLS_LABELS, COLS_FEATURES, COLS_TIME, COLS_DAYOFYEAR
+from paths import PATH_RAW, PATH_PREPROCESSED, PATH_MLP_TRAINING
 from sklearn.model_selection import train_test_split
 
 

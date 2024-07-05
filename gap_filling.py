@@ -67,12 +67,17 @@ def fill_gaps(model_name, path_data, path_gapfilled, path_model_saves):
     df['timestamp'] = pd.to_datetime(df[['year', 'month', 'day']]) + df['time']
 
     # drop year, month, day columns
-    df = df.drop(['year', 'month', 'day', '30min', 'time'], axis=1)
+    df = df.drop(['year', 'month', 'day', '30min', 'time', 'day_of_year'], axis=1)
 
 
     # filter by location and sort by timestamps
     df_bg = df[df['location'] == 0].sort_values(by='timestamp')
     df_gw = df[df['location'] == 1].sort_values(by='timestamp')
+
+    # drop location columns
+    df_bg = df_bg.drop('location', axis=1)
+    df_gw = df_gw.drop('location', axis=1)
+
 
     # save files
     df_bg.to_csv(path_gapfilled + 'BG_gapfilled.csv', index=False)
