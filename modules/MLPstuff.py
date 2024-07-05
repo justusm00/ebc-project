@@ -270,7 +270,7 @@ def plot(title, label, train_results, val_results, yscale='linear', save_path=No
 
 
 def run_training(model, optimizer, num_epochs, train_dataloader, val_dataloader, device, 
-                 loss_fn=nn.MSELoss(), patience=1, early_stopper=None, scheduler=None, verbose=False):
+                 loss_fn=nn.MSELoss(), patience=1, early_stopper=None, scheduler=None, verbose=False, plot_results=True):
     """Run model training.
 
     Args:
@@ -327,7 +327,8 @@ def run_training(model, optimizer, num_epochs, train_dataloader, val_dataloader,
     time_elapsed = np.round(time.time() - start_time, 0).astype(int)
     print(f'Finished training after {time_elapsed} seconds.')
 
-    plot("Loss", "Loss", train_losses, val_losses)
+    if plot_results:
+        plot("Loss", "Loss", train_losses, val_losses)
 
     return train_losses, val_losses
 
