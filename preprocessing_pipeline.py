@@ -79,106 +79,125 @@ def preprocess_meteo_data(path_raw, path_save, cols):
         _type_: _description_
     """
 
-    df1 = pd.read_csv(f'{path_raw}BG_meteo_30min_20230101_20230801.csv', sep=',', na_values=['NaN']).drop(0) # BG meteo 2023
-    df2 = pd.read_csv(f'{path_raw}GW_meteo_30min_20230101_20230801.csv', sep=',', na_values=['NaN']).drop(0) # GW meteo 2023
-    df3 = pd.read_csv(f'{path_raw}BG_meteo_30min_20240401_20240701.csv', sep=';', na_values=['NaN']).drop(0) # BG meteo 2024
-    df4 = pd.read_csv(f'{path_raw}GW_meteo_30min_20240401_20240701.csv', sep=';', na_values=['NaN']).drop(0) # GW meteo 2024
+    df_bg_23 = pd.read_csv(f'{path_raw}BG_meteo_30min_20230101_20230801.csv', sep=',', na_values=['NaN']).drop(0) # BG meteo 2023
+    df_gw_23 = pd.read_csv(f'{path_raw}GW_meteo_30min_20230101_20230801.csv', sep=',', na_values=['NaN']).drop(0) # GW meteo 2023
+    df_bg_24 = pd.read_csv(f'{path_raw}BG_meteo_30min_20240401_20240701.csv', sep=';', na_values=['NaN']).drop(0) # BG meteo 2024
+    df_gw_24 = pd.read_csv(f'{path_raw}GW_meteo_30min_20240401_20240701.csv', sep=';', na_values=['NaN']).drop(0) # GW meteo 2024
 
-    df1 = df1.drop(["TIMESTAMP_MITTE", "TIMESTAMP_ENDE"], axis=1)
-    df2 = df2.drop(["TIMESTAMP_MITTE", "TIMESTAMP_ENDE"], axis=1)
-    df3 = df3.drop(["TIMESTAMP_MITTE", "TIMESTAMP_ENDE"], axis=1)
-    df4 = df4.drop(["TIMESTAMP_MITTE", "TIMESTAMP_ENDE"], axis=1)
+    df_bg_23 = df_bg_23.drop(["TIMESTAMP_MITTE", "TIMESTAMP_ENDE"], axis=1)
+    df_gw_23 = df_gw_23.drop(["TIMESTAMP_MITTE", "TIMESTAMP_ENDE"], axis=1)
+    df_bg_24 = df_bg_24.drop(["TIMESTAMP_MITTE", "TIMESTAMP_ENDE"], axis=1)
+    df_gw_24 = df_gw_24.drop(["TIMESTAMP_MITTE", "TIMESTAMP_ENDE"], axis=1)
 
 
-    # fix spelling error in df2
-    df2["kurzwAusstrahlung_43m"] = df2["kurzwAusstrahlun_43m"]
-    df2 = df2.drop("kurzwAusstrahlun_43m", axis=1)
+    # fix spelling error in df_gw_23
+    df_gw_23["kurzwAusstrahlung_43m"] = df_gw_23["kurzwAusstrahlun_43m"]
+    df_gw_23 = df_gw_23.drop("kurzwAusstrahlun_43m", axis=1)
 
     # convert relevant columns to float
-    df1_cols = ["Bodenwaermefluss", "kurzwEinstrahlung_300cm", "kurzwAusstrahlung_300cm",
+    df_bg_23_cols = ["Bodenwaermefluss", "kurzwEinstrahlung_300cm", "kurzwAusstrahlung_300cm",
                 "Wasserdampfdefizit_200cm", "Wasserdampfdruck_200cm", "RelativeFeuchte_200cm", "Windgeschw_380cm", "Luftdruck"]
-    df2_cols = [f"Bodentemp_{idx}_{depth}cm" for idx in [1, 2, 3] for depth in [5, 15, 30]]
-    df2_cols.extend(["kurzwEinstrahlung_43m", "kurzwAusstrahlung_43m", "Luftdruck_43m",
-                    "Wasserdampfdefizit_43m", "Wasserdampfdruck_43m", "RelativeFeuchte_43m", "Windgeschw_I_43m"])
+    df_gw_23_cols = [f"Bodentemp_{idx}_{depth}cm" for idx in [1, 2, 3] for depth in [5, 15, 30]]
+    df_gw_23_cols.extend(["kurzwEinstrahlung_43m", "kurzwAusstrahlung_43m", "Luftdruck_43m",
+                    "Wasserdampfdefizit_43m", "Wasserdampfdruck_43m", "RelativeFeuchte_43m",
+                    "Windgeschw_I_43m", "langwEinstrahlung_43m", "langwAusstrahlung_43m"])
 
-    df3_cols = df1_cols.copy()
-    df4_cols = df2_cols.copy()
+    df_bg_24_cols = df_bg_23_cols.copy()
+    df_gw_24_cols = df_gw_23_cols.copy()
     # add soil moisture
-    df4_cols.extend([f"Bodenfeuchte_{idx}_{depth}cm" for idx in [1, 2, 3] for depth in [5, 15, 30]])
+    df_gw_24_cols.extend([f"Bodenfeuchte_{idx}_{depth}cm" for idx in [1, 2, 3] for depth in [5, 15, 30]])
 
 
-    df1 = numerical_to_float(df1, df1_cols)
-    df2 = numerical_to_float(df2, df2_cols)
-    df3 = numerical_to_float(df3, df3_cols)
-    df4 = numerical_to_float(df4, df4_cols)
+    df_bg_23 = numerical_to_float(df_bg_23, df_bg_23_cols)
+    df_gw_23 = numerical_to_float(df_gw_23, df_gw_23_cols)
+    df_bg_24 = numerical_to_float(df_bg_24, df_bg_24_cols)
+    df_gw_24 = numerical_to_float(df_gw_24, df_gw_24_cols)
 
 
 
 
-    df1["incomingShortwaveRadiation"] = df1["kurzwEinstrahlung_300cm"]
-    df2["incomingShortwaveRadiation"] = df2["kurzwEinstrahlung_43m"]
-    df3["incomingShortwaveRadiation"] = df3["kurzwEinstrahlung_300cm"]
-    df4["incomingShortwaveRadiation"] = df4["kurzwEinstrahlung_43m"]
+    df_bg_23["incomingShortwaveRadiation"] = df_bg_23["kurzwEinstrahlung_300cm"]
+    df_gw_23["incomingShortwaveRadiation"] = df_gw_23["kurzwEinstrahlung_43m"]
+    df_bg_24["incomingShortwaveRadiation"] = df_bg_24["kurzwEinstrahlung_300cm"]
+    df_gw_24["incomingShortwaveRadiation"] = df_gw_24["kurzwEinstrahlung_43m"]
 
-    df1["outgoingShortwaveRadiation"] = df1["kurzwAusstrahlung_300cm"]
-    df2["outgoingShortwaveRadiation"] = df2["kurzwAusstrahlung_43m"]
-    df3["outgoingShortwaveRadiation"] = df3["kurzwAusstrahlung_300cm"]
-    df4["outgoingShortwaveRadiation"] = df4["kurzwAusstrahlung_43m"]
+    df_bg_23["outgoingShortwaveRadiation"] = df_bg_23["kurzwAusstrahlung_300cm"]
+    df_gw_23["outgoingShortwaveRadiation"] = df_gw_23["kurzwAusstrahlung_43m"]
+    df_bg_24["outgoingShortwaveRadiation"] = df_bg_24["kurzwAusstrahlung_300cm"]
+    df_gw_24["outgoingShortwaveRadiation"] = df_gw_24["kurzwAusstrahlung_43m"]
+
+    # longwave radiation only available for gw
+    df_gw_23["incomingLongwaveRadiation"] = df_gw_23["langwEinstrahlung_43m"]
+    df_gw_23["outgoingLongwaveRadiation"] = df_gw_23["langwAusstrahlung_43m"]
+    df_gw_24["incomingLongwaveRadiation"] = df_gw_24["langwEinstrahlung_43m"]
+    df_gw_24["outgoingLongwaveRadiation"] = df_gw_24["langwAusstrahlung_43m"]
+
+
+    # net radiation
+    df_bg_23["netRadiation"] = df_bg_23["Nettostrahlung_300cm"]
+    df_bg_24["netRadiation"] = df_bg_24["Nettostrahlung_300cm"]
+    df_gw_23["netRadiation"] = df_gw_23["incomingShortwaveRadiation"] + df_gw_23["incomingLongwaveRadiation"] \
+                                    - df_gw_23["outgoingShortwaveRadiation"] - df_gw_23["outgoingLongwaveRadiation"] 
+    df_gw_24["netRadiation"] = df_gw_24["incomingShortwaveRadiation"] + df_gw_24["incomingLongwaveRadiation"] \
+                                    - df_gw_24["outgoingShortwaveRadiation"] - df_gw_24["outgoingLongwaveRadiation"] 
+    
+
+
 
 
     for idx in [1, 2, 3]:
         for depth in [5, 15, 30]:
-            df2[f"soilTemperature_{idx}_{depth}cm"] = df2[f"Bodentemp_{idx}_{depth}cm"]
-            df4[f"soilTemperature_{idx}_{depth}cm"] = df4[f"Bodentemp_{idx}_{depth}cm"]
-            df4[f"soilMoisture_{idx}_{depth}cm"] = df4[f"Bodenfeuchte_{idx}_{depth}cm"]
+            df_gw_23[f"soilTemperature_{idx}_{depth}cm"] = df_gw_23[f"Bodentemp_{idx}_{depth}cm"]
+            df_gw_24[f"soilTemperature_{idx}_{depth}cm"] = df_gw_24[f"Bodentemp_{idx}_{depth}cm"]
+            df_gw_24[f"soilMoisture_{idx}_{depth}cm"] = df_gw_24[f"Bodenfeuchte_{idx}_{depth}cm"]
 
 
-    # compute soil heatflux for df4 and df2
-    df4 = fill_thermal_conductivity(df4)
-    df4 = compute_soil_heatflux(df4)
+    # compute soil heatflux for df_gw_24 and df_gw_23
+    df_gw_24 = fill_thermal_conductivity(df_gw_24)
+    df_gw_24 = compute_soil_heatflux(df_gw_24)
 
     for idx in [1, 2, 3]:
         # just use mean thermal conductivity here
-        df2[f"thermalConductivity_{idx}_5cm"] = df4[f"thermalConductivity_{idx}_5cm"].mean()
+        df_gw_23[f"thermalConductivity_{idx}_5cm"] = df_gw_24[f"thermalConductivity_{idx}_5cm"].mean()
 
-    df2 = compute_soil_heatflux(df2)
-    df1["soilHeatflux"] = df1["Bodenwaermefluss"]
-    df3["soilHeatflux"] = df3["Bodenwaermefluss"]
+    df_gw_23 = compute_soil_heatflux(df_gw_23)
+    df_bg_23["soilHeatflux"] = df_bg_23["Bodenwaermefluss"]
+    df_bg_24["soilHeatflux"] = df_bg_24["Bodenwaermefluss"]
 
-    df1["airPressure"] = df1["Luftdruck"]
-    df2["airPressure"] = df2["Luftdruck_43m"]
-    df3["airPressure"] = df3["Luftdruck"]
-    df4["airPressure"] = df4["Luftdruck_43m"]
+    df_bg_23["airPressure"] = df_bg_23["Luftdruck"]
+    df_gw_23["airPressure"] = df_gw_23["Luftdruck_43m"]
+    df_bg_24["airPressure"] = df_bg_24["Luftdruck"]
+    df_gw_24["airPressure"] = df_gw_24["Luftdruck_43m"]
 
-    df1["waterPressureDeficit"] = df1["Wasserdampfdefizit_200cm"]
-    df2["waterPressureDeficit"] = df2["Wasserdampfdefizit_43m"]
-    df3["waterPressureDeficit"] = df3["Wasserdampfdefizit_200cm"]
-    df4["waterPressureDeficit"] = df4["Wasserdampfdefizit_43m"]
+    df_bg_23["waterPressureDeficit"] = df_bg_23["Wasserdampfdefizit_200cm"]
+    df_gw_23["waterPressureDeficit"] = df_gw_23["Wasserdampfdefizit_43m"]
+    df_bg_24["waterPressureDeficit"] = df_bg_24["Wasserdampfdefizit_200cm"]
+    df_gw_24["waterPressureDeficit"] = df_gw_24["Wasserdampfdefizit_43m"]
 
-    df1["waterVaporPressure"] = df1["Wasserdampfdruck_200cm"]
-    df2["waterVaporPressure"] = df2["Wasserdampfdruck_43m"]
-    df3["waterVaporPressure"] = df3["Wasserdampfdruck_200cm"]
-    df4["waterVaporPressure"] = df4["Wasserdampfdruck_43m"]
+    df_bg_23["waterVaporPressure"] = df_bg_23["Wasserdampfdruck_200cm"]
+    df_gw_23["waterVaporPressure"] = df_gw_23["Wasserdampfdruck_43m"]
+    df_bg_24["waterVaporPressure"] = df_bg_24["Wasserdampfdruck_200cm"]
+    df_gw_24["waterVaporPressure"] = df_gw_24["Wasserdampfdruck_43m"]
 
-    df1["relativeHumidity"] = df1["RelativeFeuchte_200cm"]
-    df2["relativeHumidity"] = df2["RelativeFeuchte_43m"]
-    df3["relativeHumidity"] = df3["RelativeFeuchte_200cm"]
-    df4["relativeHumidity"] = df4["RelativeFeuchte_43m"]
+    df_bg_23["relativeHumidity"] = df_bg_23["RelativeFeuchte_200cm"]
+    df_gw_23["relativeHumidity"] = df_gw_23["RelativeFeuchte_43m"]
+    df_bg_24["relativeHumidity"] = df_bg_24["RelativeFeuchte_200cm"]
+    df_gw_24["relativeHumidity"] = df_gw_24["RelativeFeuchte_43m"]
 
-    df1["windSpeed"] = df1["Windgeschw_380cm"]
-    df2["windSpeed"] = df2["Windgeschw_I_43m"]
-    df3["windSpeed"] = df3["Windgeschw_380cm"]
-    df4["windSpeed"] = df4["Windgeschw_I_43m"]
+    df_bg_23["windSpeed"] = df_bg_23["Windgeschw_380cm"]
+    df_gw_23["windSpeed"] = df_gw_23["Windgeschw_I_43m"]
+    df_bg_24["windSpeed"] = df_bg_24["Windgeschw_380cm"]
+    df_gw_24["windSpeed"] = df_gw_24["Windgeschw_I_43m"]
 
 
     # add location column
-    df1["location"] = 0
-    df2["location"] = 1
-    df3["location"] = 0
-    df4["location"] = 1
+    df_bg_23["location"] = 0
+    df_gw_23["location"] = 1
+    df_bg_24["location"] = 0
+    df_gw_24["location"] = 1
 
     # concat all dataframes
-    df = pd.concat([df1, df2, df3, df4])
+    df = pd.concat([df_bg_23, df_gw_23, df_bg_24, df_gw_24])
 
     # transform timestamp
     df = transform_timestamp(df, 'TIMESTAMP_START')

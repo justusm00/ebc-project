@@ -16,8 +16,8 @@ df_gw['time'] = pd.to_datetime(df_gw['timestamp']).dt.strftime('%H:%M:%S')
 df_bg['time'] = pd.to_datetime(df_bg['timestamp']).dt.strftime('%H:%M:%S')
 
 # add net radiation
-df_gw["Q"] = df_gw["incomingShortwaveRadiation"] + df_gw["outgoingShortwaveRadiation"]    
-df_bg["Q"] = df_bg["incomingShortwaveRadiation"] + df_bg["outgoingShortwaveRadiation"]    
+df_gw["Q"] = df_gw["netRadiation"]  
+df_bg["Q"] = df_bg["netRadiation"]
 
 
 def aggregate_data(df):

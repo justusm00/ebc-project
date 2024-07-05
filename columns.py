@@ -16,6 +16,6 @@ COLS_FLUXES = COLS_TIME + ["H_orig", "LE_orig", "H_f", "LE_f"]
 
 # columns to keep from meteo data
 COLS_METEO = COLS_TIME + ["incomingShortwaveRadiation", "outgoingShortwaveRadiation", "soilHeatflux", "airPressure",
-              "waterPressureDeficit", "waterVaporPressure", "windSpeed", "relativeHumidity"]
+              "waterPressureDeficit", "waterVaporPressure", "windSpeed", "relativeHumidity", "netRadiation"]
 
 
