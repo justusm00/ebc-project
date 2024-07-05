@@ -180,3 +180,7 @@ __pycache__/
 
 # checkpoint files
 checkpoint.pt
+
+# other
+*.npy
+*.json
