@@ -19,5 +19,3 @@ COLS_METEO = COLS_TIME + ["incomingShortwaveRadiation", "outgoingShortwaveRadiat
               "waterPressureDeficit", "waterVaporPressure", "windSpeed", "relativeHumidity"]
 
 
-
-PATH = 'data/data_files/'

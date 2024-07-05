@@ -61,6 +61,57 @@ class MLP(nn.Module):
 
 
 
+class EarlyStopper:
+    """Early stops the training if validation accuracy does not increase after a
+    given patience. Saves and loads model checkpoints.
+    """
+    def __init__(self, verbose=False, path='checkpoint.pt', patience=1):
+        """Initialization.
+
+        Args:
+            verbose (bool, optional): Print additional information. Defaults to False.
+            path (str, optional): Path where checkpoints should be saved. 
+                Defaults to 'checkpoint.pt'.
+            patience (int, optional): Number of epochs to wait for increasing
+                accuracy. If accuracy does not increase, stop training early. 
+                Defaults to 1.
+        """
+        ####################
+        self.verbose = verbose
+        self.path = path
+        self.patience = patience
+        self.counter = 0
+        ####################
+
+    @property
+    def early_stop(self):
+        """True if early stopping criterion is reached.
+
+        Returns:
+            [bool]: True if early stopping criterion is reached.
+        """
+        if self.counter == self.patience:
+            return True
+
+    def save_model(self, model):
+        # scripted save
+        model_scripted = torch.jit.script(model) # Export to TorchScript
+        model_scripted.save(self.path)
+        return
+        
+    def check_criterion(self, loss_val_new, loss_val_old):
+        if loss_val_old <= loss_val_new:
+            self.counter += 1
+        else:
+            self.counter = 0
+        
+        return
+    
+    def load_checkpoint(self):
+        model = torch.jit.load(self.path)
+        return model
+
+
 
 
 
@@ -151,6 +202,33 @@ def validate(dataloader, model, master_bar, device, loss_fn=nn.MSELoss()):
     return np.mean(epoch_loss)
 
 
+def test(dataloader, model, device, loss_fn=nn.MSELoss()):
+    """Compute loss on testset.
+
+    Args:
+        dataloader: dataloader containing validation data
+        model (nn.Module): the model to train
+        loss_fn: the loss function to be used, defaults to MSELoss
+
+    Returns:
+        Mean loss 
+    """
+    epoch_loss = []
+
+    model.eval()
+    with torch.no_grad():
+        for x, y in dataloader:
+            # make a prediction on test set
+            y_pred = model(x.to(device, non_blocking=True))
+
+            # Compute loss
+            loss = loss_fn(y_pred, y.to(device, non_blocking=True))
+
+            # For plotting the train loss, save it for each sample
+            epoch_loss.append(loss.item())
+
+    # Return the mean loss, the accuracy and the confusion matrix
+    return np.mean(epoch_loss)
 
 
 
@@ -192,7 +270,7 @@ def plot(title, label, train_results, val_results, yscale='linear', save_path=No
 
 
 def run_training(model, optimizer, num_epochs, train_dataloader, val_dataloader, device, 
-                 loss_fn=nn.MSELoss(), patience=1, early_stopper=None, scheduler=None, verbose=False):
+                 loss_fn=nn.MSELoss(), patience=1, early_stopper=None, scheduler=None, verbose=False, plot_results=True):
     """Run model training.
 
     Args:
@@ -249,59 +327,10 @@ def run_training(model, optimizer, num_epochs, train_dataloader, val_dataloader,
     time_elapsed = np.round(time.time() - start_time, 0).astype(int)
     print(f'Finished training after {time_elapsed} seconds.')
 
-    plot("Loss", "Loss", train_losses, val_losses)
+    if plot_results:
+        plot("Loss", "Loss", train_losses, val_losses)
 
     return train_losses, val_losses
 
 
 
-
-class EarlyStopper:
-    """Early stops the training if validation accuracy does not increase after a
-    given patience. Saves and loads model checkpoints.
-    """
-    def __init__(self, verbose=False, path='checkpoint.pt', patience=1):
-        """Initialization.
-
-        Args:
-            verbose (bool, optional): Print additional information. Defaults to False.
-            path (str, optional): Path where checkpoints should be saved. 
-                Defaults to 'checkpoint.pt'.
-            patience (int, optional): Number of epochs to wait for increasing
-                accuracy. If accuracy does not increase, stop training early. 
-                Defaults to 1.
-        """
-        ####################
-        self.verbose = verbose
-        self.path = path
-        self.patience = patience
-        self.counter = 0
-        ####################
-
-    @property
-    def early_stop(self):
-        """True if early stopping criterion is reached.
-
-        Returns:
-            [bool]: True if early stopping criterion is reached.
-        """
-        if self.counter == self.patience:
-            return True
-
-    def save_model(self, model):
-        # scripted save
-        model_scripted = torch.jit.script(model) # Export to TorchScript
-        model_scripted.save(self.path)
-        return
-        
-    def check_criterion(self, loss_val_new, loss_val_old):
-        if loss_val_old <= loss_val_new:
-            self.counter += 1
-        else:
-            self.counter = 0
-        
-        return
-    
-    def load_checkpoint(self):
-        model = torch.jit.load(self.path)
-        return model
