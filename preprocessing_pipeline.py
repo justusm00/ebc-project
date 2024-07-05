@@ -211,7 +211,7 @@ def merge_data(df_fluxes, df_meteo):
 
 
 
-def preprocessing_pipeline(path, cols_fluxes, cols_meteo, cols_labels, cols_features, test_size=0.2, random_state=42):
+def preprocessing_pipeline(path, cols_fluxes, cols_meteo, cols_features, cols_labels, test_size=0.2, random_state=42):
     """Preprocessing pipeline to create dataset for Gapfilling MLP.
 
     Args:
@@ -253,5 +253,6 @@ def preprocessing_pipeline(path, cols_fluxes, cols_meteo, cols_labels, cols_feat
     return 
 
 
-
-preprocessing_pipeline(PATH, COLS_FLUXES+COLS_DAYOFYEAR, COLS_METEO+COLS_DAYOFYEAR, COLS_LABELS+COLS_DAYOFYEAR, COLS_FEATURES+COLS_DAYOFYEAR)
+if __name__ == '__main__': 
+    preprocessing_pipeline(path=PATH, cols_fluxes=COLS_FLUXES+COLS_DAYOFYEAR, cols_meteo=COLS_METEO+COLS_DAYOFYEAR,
+                           cols_features=COLS_FEATURES+COLS_DAYOFYEAR, cols_labels=COLS_LABELS+COLS_DAYOFYEAR)
