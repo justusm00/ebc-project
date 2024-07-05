@@ -22,7 +22,7 @@ from paths import PATH_MLP_TRAINING, PATH_MODEL_SAVES, PATH_PLOTS
 normalization = True 
 who_trained = 'JM' # author
 GPU = False
-num_epochs = 2
+num_epochs = 50
 lr = 10**(-3)
 num_hidden_units = 30
 num_hidden_layers = 4
