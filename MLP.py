@@ -5,7 +5,6 @@ import numpy as np
 import torch
 import torch.nn as nn   
 import torch.optim as optim
-from torch.utils.data import Dataset, DataLoader
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 
@@ -15,7 +14,7 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 from modules.util import EBCDataset, grab_data, train_val_splitter, data_loaders
 from modules.MLPstuff import run_training, MLP, test
 from columns import COLS_FEATURES, COLS_LABELS
-from paths import PATH_MLP_TRAINING, PATH_MODEL_SAVES
+from paths import PATH_MLP_TRAINING, PATH_MODEL_SAVES, PATH_PLOTS
 
 
 
@@ -23,10 +22,11 @@ from paths import PATH_MLP_TRAINING, PATH_MODEL_SAVES
 normalization = True 
 who_trained = 'JM' # author
 GPU = False
-num_epochs = 10
+num_epochs = 2
 lr = 10**(-3)
 num_hidden_units = 30
 num_hidden_layers = 4
+batch_size = 10
 
 # construct model name
 if normalization:
@@ -36,7 +36,22 @@ else:
 
 
 
-def train_mlp(model_name, normalization, GPU, num_epochs, lr, path_model_saves):
+def train_mlp(model_name, normalization, GPU, num_epochs, lr, path_model_saves, batch_size, path_plots):
+    """Train MLP.
+
+    Args:
+        model_name (_type_): model name
+        normalization (bool): If True, normalize trainset and save statistics.
+        GPU (bool): if GPU should be used
+        num_epochs (_type_): Number of epochs trained
+        lr (_type_): learning rate
+        path_model_saves (_type_): path where model and trainset statistics are saved
+        batch_size (_type_):
+        path_plots (str): path where plots are stored (as png)
+
+    Returns:
+        _type_: _description_
+    """
     # Get number of cpus to use for faster parallelized data loading
     avb_cpus = os.cpu_count()
     num_cpus = 4
@@ -75,7 +90,7 @@ def train_mlp(model_name, normalization, GPU, num_epochs, lr, path_model_saves):
 
     trainset, valset = train_val_splitter(trainset)
 
-    trainloader, valloader, testloader = data_loaders(trainset, valset, testset, num_cpus=num_cpus, batch_size=10)
+    trainloader, valloader, testloader = data_loaders(trainset, valset, testset, num_cpus=num_cpus, batch_size=batch_size)
 
 
     if normalization:
@@ -124,7 +139,7 @@ def train_mlp(model_name, normalization, GPU, num_epochs, lr, path_model_saves):
 
 
     train_losses, val_losses = run_training(model=model, optimizer=optimizer, num_epochs=num_epochs, train_dataloader=trainloader, val_dataloader=valloader, 
-                                                                device=device, loss_fn=criterion, patience=10, early_stopper=True, scheduler=scheduler, verbose=True, plot_results=True)
+                                                                device=device, loss_fn=criterion, patience=10, early_stopper=True, scheduler=scheduler, verbose=True, plot_results=True, save_plots_path=path_plots + 'loss/' + model_name + '_loss' + '.png')
 
 
     # Save the model
@@ -139,4 +154,5 @@ def train_mlp(model_name, normalization, GPU, num_epochs, lr, path_model_saves):
 
 
 if __name__ == '__main__':
-    train_mlp(model_name=model_name, normalization=normalization, GPU=GPU, num_epochs=num_epochs, lr=lr, path_model_saves=PATH_MODEL_SAVES)
+    train_mlp(model_name=model_name, normalization=normalization, GPU=GPU, num_epochs=num_epochs, lr=lr,
+              path_model_saves=PATH_MODEL_SAVES, batch_size=batch_size, path_plots=PATH_PLOTS)
