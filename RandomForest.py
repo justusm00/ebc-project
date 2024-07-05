@@ -6,18 +6,20 @@ import pandas as pd
 import matplotlib as plt
 import pickle
 
-from modules.util import grab_data
 
-from columns import COLS_FEATURES, COLS_DAYOFYEAR
-from paths import PATH_PREPROCESSED
+from columns import COLS_FEATURES, COLS_LABELS, COLS_DAYOFYEAR
+from paths import PATH_MLP_TRAINING
 
-input_data, target_data, dim_in, dim_out = grab_data(path= PATH_PREPROCESSED + 'training_data_merged.csv', columns_data=COLS_FEATURES+COLS_DAYOFYEAR, columns_labels=['H_orig', 'LE_orig'], return_dataset=False)
+training_data = pd.read_csv(PATH_MLP_TRAINING + 'training_data.csv')
+test_data = pd.read_csv(PATH_MLP_TRAINING + 'test_data.csv')
 
-input_data.head()
-target_data.head()
+X_train = training_data[COLS_FEATURES]
+X_test = test_data[COLS_FEATURES]
 
-# First look into efficiency of random forest
-X_train, X_test, y_train, y_test = train_test_split(input_data, target_data, test_size=0.2, random_state=42)
+y_train = training_data[COLS_LABELS]
+y_test = test_data[COLS_LABELS]
+
+
 
 Rfr = RandomForestRegressor(n_estimators=100, max_depth=40, min_samples_split=20, min_samples_leaf=10, random_state=42)
 Rfr.fit(X_train, y_train)
