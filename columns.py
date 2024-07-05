@@ -20,6 +20,9 @@ COLS_METEO = COLS_TIME + ["incomingShortwaveRadiation", "outgoingShortwaveRadiat
 
 
 
+# paths
 PATH_RAW = 'data/raw/'
 PATH_PREPROCESSED = 'data/preprocessed/'
 PATH_MLP_TRAINING = 'data/mlp_training/'
+PATH_GAPFILLED = 'data/gapfilled/'
+PATH_MODEL_SAVES = 'model_saves/'

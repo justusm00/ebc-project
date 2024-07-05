@@ -14,7 +14,7 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 from modules.util import EBCDataset, grab_data, train_val_splitter, data_loaders
 from modules.MLPstuff import run_training, MLP, test
-from columns import COLS_FEATURES, COLS_LABELS
+from columns import COLS_FEATURES, COLS_LABELS, PATH_MLP_TRAINING, PATH_MODEL_SAVES
 
 
 
@@ -29,13 +29,13 @@ num_hidden_layers = 4
 
 # construct model name
 if normalization:
-    model_name = f'mlp_nu{num_hidden_units}_nl{num_hidden_layers}_norm_{who_trained}'
+    model_name = f'mlp_{num_hidden_units}_{num_hidden_layers}_norm_{who_trained}'
 else:
-    model_name = f'mlp_nu{num_hidden_units}_nl{num_hidden_layers}_{who_trained}'
+    model_name = f'mlp_{num_hidden_units}_{num_hidden_layers}_{who_trained}'
 
 
 
-def train_mlp(model_name, normalization, GPU, num_epochs, lr):
+def train_mlp(model_name, normalization, GPU, num_epochs, lr, path_model_saves):
     # Get number of cpus to use for faster parallelized data loading
     avb_cpus = os.cpu_count()
     num_cpus = 4
@@ -69,7 +69,7 @@ def train_mlp(model_name, normalization, GPU, num_epochs, lr):
     device = get_device()
 
 
-    trainset, testset = grab_data('data/training_data.csv', 'data/test_data.csv', num_cpus,
+    trainset, testset = grab_data(PATH_MLP_TRAINING + 'training_data.csv', PATH_MLP_TRAINING + 'test_data.csv', num_cpus,
                                                             COLS_FEATURES, COLS_LABELS, normalization=normalization)
 
     trainset, valset = train_val_splitter(trainset)
@@ -127,7 +127,7 @@ def train_mlp(model_name, normalization, GPU, num_epochs, lr):
 
 
     # Save the model
-    model_save_path = 'model_saves/' + model_name + '.pth'
+    model_save_path = path_model_saves + model_name + '.pth'
     torch.save(model.state_dict(), model_save_path )
     print(f"Saved model to {model_save_path} \n")
 
@@ -138,4 +138,4 @@ def train_mlp(model_name, normalization, GPU, num_epochs, lr):
 
 
 if __name__ == '__main__':
-    train_mlp(model_name=model_name, normalization=normalization, GPU=GPU, num_epochs=num_epochs, lr=lr)
+    train_mlp(model_name=model_name, normalization=normalization, GPU=GPU, num_epochs=num_epochs, lr=lr, path_model_saves=PATH_MODEL_SAVES)
