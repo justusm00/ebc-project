@@ -94,7 +94,7 @@ def grab_data(path_train, path_test, num_cpus, columns_data=None, columns_labels
         num_cpus (_type_): _description_
         columns_data (_type_, optional): _description_. Defaults to None.
         columns_labels (_type_, optional): _description_. Defaults to None.
-        normalization (bool, optional): _description_. Defaults to False.
+        normalization (bool, optional): If True, normalize data based on trainset statistics.
 
     Returns:
         _type_: _description_

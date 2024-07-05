@@ -26,7 +26,16 @@ else:
     model_name = f'mlp_{num_hidden_units}_{num_hidden_layers}_{who_trained}'
 
 
-def fill_gaps(model_name, path_data, path_gapfilled, path_model_saves):
+def fill_gaps(model_name, path_data, path_gapfilled, path_model_saves, normalization):
+    """Perform gapfilling on data using pretrained model. 
+
+    Args:
+        model_name (_type_): MLP
+        path_data (_type_): path to data (labeled and unlabeled)
+        path_gapfilled (_type_): path where gapfilled data is stored
+        path_model_saves (_type_): path where model is saved ()
+        normalization (bool) : Load training data statistics if normalization is True
+    """
     # construct model path
     path_model = path_model_saves + model_name + '.pth'
 
@@ -86,4 +95,4 @@ def fill_gaps(model_name, path_data, path_gapfilled, path_model_saves):
 
 
 if __name__ == '__main__':
-    fill_gaps(model_name=model_name, path_data=path_data, path_gapfilled=PATH_GAPFILLED, path_model_saves=PATH_MODEL_SAVES)
+    fill_gaps(model_name=model_name, path_data=path_data, path_gapfilled=PATH_GAPFILLED, path_model_saves=PATH_MODEL_SAVES, normalization=normalization)

@@ -260,7 +260,7 @@ def plot(title, label, train_results, val_results, yscale='linear', save_path=No
     sns.despine(trim=True, offset=5)
     plt.title(title, fontsize=15)
     if save_path:
-        plt.savefig(str(os.path.join( save_path , label+".png")), bbox_inches='tight')
+        plt.savefig(str(os.path.join( save_path)), bbox_inches='tight')
     plt.show()
 
 
@@ -270,7 +270,7 @@ def plot(title, label, train_results, val_results, yscale='linear', save_path=No
 
 
 def run_training(model, optimizer, num_epochs, train_dataloader, val_dataloader, device, 
-                 loss_fn=nn.MSELoss(), patience=1, early_stopper=None, scheduler=None, verbose=False, plot_results=True):
+                 loss_fn=nn.MSELoss(), patience=1, early_stopper=None, scheduler=None, verbose=False, plot_results=True, save_plots_path=None):
     """Run model training.
 
     Args:
@@ -328,7 +328,7 @@ def run_training(model, optimizer, num_epochs, train_dataloader, val_dataloader,
     print(f'Finished training after {time_elapsed} seconds.')
 
     if plot_results:
-        plot("Loss", "Loss", train_losses, val_losses)
+        plot("Loss", "Loss", train_losses, val_losses, save_path=save_plots_path)
 
     return train_losses, val_losses
 
