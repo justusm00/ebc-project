@@ -13,7 +13,7 @@ from modules.MLPstuff import MLP
 # SPECIFY THESE
 normalization = True 
 who_trained = 'JM' # author
-num_hidden_units = 30
+num_hidden_units = 60
 num_hidden_layers = 4
 path_data = PATH_PREPROCESSED + 'data_merged_with_nans.csv'
 
@@ -40,7 +40,7 @@ def fill_gaps(model_name, path_data, path_gapfilled, path_model_saves, normaliza
     path_model = path_model_saves + model_name + '.pth'
 
     # Load the model
-    model = MLP(len(COLS_FEATURES), len(COLS_LABELS), num_hidden_units=30, num_hidden_layers=4)
+    model = MLP(len(COLS_FEATURES), len(COLS_LABELS), num_hidden_units=num_hidden_units, num_hidden_layers=num_hidden_layers)
     model.load_state_dict(torch.load(path_model))
 
 
@@ -58,9 +58,6 @@ def fill_gaps(model_name, path_data, path_gapfilled, path_model_saves, normaliza
     data = pd.read_csv(path_data)
     df_f = data.copy()
 
-    # Load the model
-    model = MLP(len(COLS_FEATURES), len(COLS_LABELS), num_hidden_units=30, num_hidden_layers=4)
-    model.load_state_dict(torch.load(path_model))
 
     df_mlp = gap_filling_mlp(data=data, model=model, columns_data=COLS_FEATURES, columns_labels=COLS_LABELS, means=trainset_means, stds=trainset_stds)
 

@@ -22,9 +22,9 @@ from paths import PATH_MLP_TRAINING, PATH_MODEL_SAVES, PATH_PLOTS
 normalization = True 
 who_trained = 'JM' # author
 GPU = False
-num_epochs = 50
+num_epochs = 100
 lr = 10**(-3)
-num_hidden_units = 30
+num_hidden_units = 60
 num_hidden_layers = 4
 batch_size = 10
 
@@ -108,6 +108,8 @@ def train_mlp(model_name, normalization, GPU, num_epochs, lr, path_model_saves, 
     print("Test run with small learning rate for single epoch ... \n")
 
     model = MLP(len(COLS_FEATURES), len(COLS_LABELS), num_hidden_units=num_hidden_units, num_hidden_layers=num_hidden_layers).to(device)
+    print("Model architecture: \n")
+    print(model.eval())
     # Set loss function and optimizer
     criterion = nn.MSELoss()
     optimizer = optim.Adam(model.parameters(), lr=1e-5)

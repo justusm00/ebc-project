@@ -84,8 +84,9 @@ def plot_diurnal_cycles(path_gapfilled, path_plots):
         ax.legend()
 
     plt.tight_layout()
-    plt.show()
     plt.savefig(PATH_PLOTS + 'diurnal_cycles/diurnal_cycles_comparison.png')
+    plt.show()
+
 
 
 
