@@ -5,7 +5,7 @@ from tqdm import tqdm
 from soil.soil import fill_thermal_conductivity, compute_soil_heatflux
 from modules.util import transform_timestamp, numerical_to_float
 
-from columns import COLS_METEO, COLS_FLUXES, COLS_LABELS, COLS_FEATURES, COLS_TIME, PATH, COLS_DAYOFYEAR
+from columns import COLS_METEO, COLS_FLUXES, COLS_LABELS, COLS_FEATURES, COLS_TIME, PATH_RAW, PATH_PREPROCESSED, PATH_MLP_TRAINING, COLS_DAYOFYEAR
 from sklearn.model_selection import train_test_split
 
 
@@ -13,7 +13,7 @@ from sklearn.model_selection import train_test_split
 
 ######## Script to automate data preprocessing and merging
 
-def preprocess_flux_data(path, cols):
+def preprocess_flux_data(path_raw, path_save, cols):
     """Preprocess flux data - transform timestamp, convert numerical columns to float and keep only relevant columns.
 
     Args:
@@ -27,17 +27,17 @@ def preprocess_flux_data(path, cols):
     cols_to_convert = [col for col in cols if col not in COLS_TIME+COLS_DAYOFYEAR]
 
     # collect files to preprocess
-    files = [f for f in os.listdir(path) if 'fluxes' in f]
+    files = [f for f in os.listdir(path_raw) if 'fluxes' in f]
 
 
     data = []
 
     for f in tqdm(files):
         try: 
-            df = pd.read_csv(path+f, sep=',').drop(0)
+            df = pd.read_csv(path_raw+f, sep=',').drop(0)
         except pd.errors.ParserError: 
             # the 2024 files use ';' as separator and ',' as decimal separator
-            df = pd.read_csv(path+f, sep=';').drop(0)
+            df = pd.read_csv(path_raw+f, sep=';').drop(0)
 
         # location based on file name (files should be properly labelled with either BG or GW!)
         # one-hot encode the location: BG (botanical garden)==0, GW (Goettinger forest)==1
@@ -59,7 +59,7 @@ def preprocess_flux_data(path, cols):
     data_final = pd.concat(data, axis=0, ignore_index=True)
 
 
-    data_final.to_csv('data/flux_data_preprocessed.csv', index=False)
+    data_final.to_csv(path_save + 'flux_data_preprocessed.csv', index=False)
 
     return data_final
     
@@ -67,7 +67,7 @@ def preprocess_flux_data(path, cols):
 
 
 
-def preprocess_meteo_data(path, cols):
+def preprocess_meteo_data(path_raw, path_save, cols):
     """Preprocess meteo data - transform timestamp, convert numerical columns to float, rename columns to english and keep only relevant columns.
 
     Args:
@@ -78,10 +78,10 @@ def preprocess_meteo_data(path, cols):
         _type_: _description_
     """
 
-    df1 = pd.read_csv(f'{path}BG_meteo_30min_20230101_20230801.csv', sep=',', na_values=['NaN']).drop(0) # BG meteo 2023
-    df2 = pd.read_csv(f'{path}GW_meteo_30min_20230101_20230801.csv', sep=',', na_values=['NaN']).drop(0) # GW meteo 2023
-    df3 = pd.read_csv(f'{path}BG_meteo_30min_20240401_20240701.csv', sep=';', na_values=['NaN']).drop(0) # BG meteo 2024
-    df4 = pd.read_csv(f'{path}GW_meteo_30min_20240401_20240701.csv', sep=';', na_values=['NaN']).drop(0) # GW meteo 2024
+    df1 = pd.read_csv(f'{path_raw}BG_meteo_30min_20230101_20230801.csv', sep=',', na_values=['NaN']).drop(0) # BG meteo 2023
+    df2 = pd.read_csv(f'{path_raw}GW_meteo_30min_20230101_20230801.csv', sep=',', na_values=['NaN']).drop(0) # GW meteo 2023
+    df3 = pd.read_csv(f'{path_raw}BG_meteo_30min_20240401_20240701.csv', sep=';', na_values=['NaN']).drop(0) # BG meteo 2024
+    df4 = pd.read_csv(f'{path_raw}GW_meteo_30min_20240401_20240701.csv', sep=';', na_values=['NaN']).drop(0) # GW meteo 2024
 
     df1 = df1.drop(["TIMESTAMP_MITTE", "TIMESTAMP_ENDE"], axis=1)
     df2 = df2.drop(["TIMESTAMP_MITTE", "TIMESTAMP_ENDE"], axis=1)
@@ -187,7 +187,7 @@ def preprocess_meteo_data(path, cols):
 
 
     # save as csv
-    df.to_csv('data/meteo_data_preprocessed.csv', index=False)
+    df.to_csv(path_save + 'meteo_data_preprocessed.csv', index=False)
 
     return df
 
@@ -205,13 +205,13 @@ def merge_data(df_fluxes, df_meteo):
     """
     df = df_meteo.merge(df_fluxes, how="outer", on=COLS_TIME+COLS_DAYOFYEAR)
     # save as csv
-    df.to_csv('data/data_merged_with_nans.csv', index=False)
+    df.to_csv('data/preprocessed/data_merged_with_nans.csv', index=False)
 
     return df
 
 
 
-def preprocessing_pipeline(path, cols_fluxes, cols_meteo, cols_features, cols_labels, test_size=0.2, random_state=42):
+def preprocessing_pipeline(path_raw, path_preprocessed, path_mlp_training, cols_fluxes, cols_meteo, cols_features, cols_labels, test_size=0.2, random_state=42):
     """Preprocessing pipeline to create dataset for Gapfilling MLP.
 
     Args:
@@ -223,8 +223,8 @@ def preprocessing_pipeline(path, cols_fluxes, cols_meteo, cols_features, cols_la
         _type_: _description_
 
     """
-    df_fluxes = preprocess_flux_data(path, cols_fluxes)
-    df_meteo = preprocess_meteo_data(path, cols_meteo)
+    df_fluxes = preprocess_flux_data(path_raw, path_preprocessed, cols_fluxes)
+    df_meteo = preprocess_meteo_data(path_raw, path_preprocessed, cols_meteo)
     df_merged = merge_data(df_meteo, df_fluxes)
 
     # keep only feature and label columns
@@ -247,12 +247,13 @@ def preprocessing_pipeline(path, cols_fluxes, cols_meteo, cols_features, cols_la
 
 
     # save as csv
-    df_train.to_csv('data/training_data.csv', index=False)
-    df_test.to_csv('data/test_data.csv', index=False)
+    df_train.to_csv(path_mlp_training + 'training_data.csv', index=False)
+    df_test.to_csv(path_mlp_training + 'test_data.csv', index=False)
 
     return 
 
 
 if __name__ == '__main__': 
-    preprocessing_pipeline(path=PATH, cols_fluxes=COLS_FLUXES+COLS_DAYOFYEAR, cols_meteo=COLS_METEO+COLS_DAYOFYEAR,
+    preprocessing_pipeline(path_raw=PATH_RAW, path_preprocessed=PATH_PREPROCESSED, path_mlp_training=PATH_MLP_TRAINING,
+                           cols_fluxes=COLS_FLUXES+COLS_DAYOFYEAR, cols_meteo=COLS_METEO+COLS_DAYOFYEAR,
                            cols_features=COLS_FEATURES+COLS_DAYOFYEAR, cols_labels=COLS_LABELS+COLS_DAYOFYEAR)

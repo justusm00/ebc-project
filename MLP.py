@@ -19,11 +19,19 @@ from columns import COLS_FEATURES, COLS_LABELS
 
 
 # SPECIFY THESE
-model_name = 'mlp_30_4_norm_JM'
 normalization = True 
+who_trained = 'JM' # author
 GPU = False
 num_epochs = 10
 lr = 10**(-3)
+num_hidden_units = 30
+num_hidden_layers = 4
+
+# construct model name
+if normalization:
+    model_name = f'mlp_nu{num_hidden_units}_nl{num_hidden_layers}_norm_{who_trained}'
+else:
+    model_name = f'mlp_nu{num_hidden_units}_nl{num_hidden_layers}_{who_trained}'
 
 
 
@@ -83,7 +91,7 @@ def train_mlp(model_name, normalization, GPU, num_epochs, lr):
 
     print("Test run with small learning rate for single epoch ... \n")
 
-    model = MLP(len(COLS_FEATURES), len(COLS_LABELS), num_hidden_units=30, num_hidden_layers=4).to(device)
+    model = MLP(len(COLS_FEATURES), len(COLS_LABELS), num_hidden_units=num_hidden_units, num_hidden_layers=num_hidden_layers).to(device)
     # Set loss function and optimizer
     criterion = nn.MSELoss()
     optimizer = optim.Adam(model.parameters(), lr=1e-5)
@@ -105,7 +113,7 @@ def train_mlp(model_name, normalization, GPU, num_epochs, lr):
         torch.cuda.empty_cache()
 
     # Initialize the model
-    model = MLP(len(COLS_FEATURES), len(COLS_LABELS), num_hidden_units=30, num_hidden_layers=4).to(device)
+    model = MLP(len(COLS_FEATURES), len(COLS_LABELS), num_hidden_units=num_hidden_units, num_hidden_layers=num_hidden_layers).to(device)
     # Set loss function and optimizer
     criterion = nn.MSELoss()
     optimizer = optim.Adam(model.parameters(), lr=lr)

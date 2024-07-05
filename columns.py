@@ -20,4 +20,6 @@ COLS_METEO = COLS_TIME + ["incomingShortwaveRadiation", "outgoingShortwaveRadiat
 
 
 
-PATH = 'data/data_files/'
+PATH_RAW = 'data/raw/'
+PATH_PREPROCESSED = 'data/preprocessed/'
+PATH_MLP_TRAINING = 'data/mlp_training/'
