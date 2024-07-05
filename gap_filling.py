@@ -5,7 +5,8 @@ import torch
 
 
 from modules.util import gap_filling_mlp
-from columns import COLS_FEATURES, COLS_LABELS, COLS_TIME, PATH_PREPROCESSED, PATH_GAPFILLED, PATH_MODEL_SAVES
+from columns import COLS_FEATURES, COLS_LABELS, COLS_TIME
+from paths import PATH_PREPROCESSED, PATH_GAPFILLED, PATH_MODEL_SAVES
 from modules.MLPstuff import MLP
 
 
@@ -66,7 +67,7 @@ def fill_gaps(model_name, path_data, path_gapfilled, path_model_saves):
     df['timestamp'] = pd.to_datetime(df[['year', 'month', 'day']]) + df['time']
 
     # drop year, month, day columns
-    df = df.drop(['year', 'month', 'day', '30min'], axis=1)
+    df = df.drop(['year', 'month', 'day', '30min', 'time'], axis=1)
 
 
     # filter by location and sort by timestamps

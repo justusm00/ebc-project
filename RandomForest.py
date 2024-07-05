@@ -9,8 +9,9 @@ import pickle
 from modules.util import grab_data
 
 from columns import COLS_FEATURES, COLS_DAYOFYEAR
+from paths import PATH_PREPROCESSED
 
-input_data, target_data, dim_in, dim_out = grab_data(path='data/training_data_merged.csv', columns_data=COLS_FEATURES+COLS_DAYOFYEAR, columns_labels=['H_orig', 'LE_orig'], return_dataset=False)
+input_data, target_data, dim_in, dim_out = grab_data(path= PATH_PREPROCESSED + 'training_data_merged.csv', columns_data=COLS_FEATURES+COLS_DAYOFYEAR, columns_labels=['H_orig', 'LE_orig'], return_dataset=False)
 
 input_data.head()
 target_data.head()

@@ -6,8 +6,9 @@ import seaborn as sns
 from sklearn.model_selection import train_test_split
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.multioutput import MultiOutputRegressor
+from paths import PATH_PREPROCESSED
 
-data = pd.read_csv('data/data_merged_with_nans.csv')
+data = pd.read_csv(PATH_PREPROCESSED + 'data_merged_with_nans.csv')
 data = data.dropna() # Drop all nans for this analyis
 data.head()
 

@@ -14,7 +14,8 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 from modules.util import EBCDataset, grab_data, train_val_splitter, data_loaders
 from modules.MLPstuff import run_training, MLP, test
-from columns import COLS_FEATURES, COLS_LABELS, PATH_MLP_TRAINING, PATH_MODEL_SAVES
+from columns import COLS_FEATURES, COLS_LABELS
+from paths import PATH_MLP_TRAINING, PATH_MODEL_SAVES
 
 
 
