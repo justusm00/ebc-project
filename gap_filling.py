@@ -2,69 +2,126 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import torch
+import json
+import pickle
 
 
-from modules.util import gap_filling_mlp
-from columns import COLS_FEATURES, COLS_LABELS, COLS_TIME
-from paths import PATH_PREPROCESSED, PATH_GAPFILLED, PATH_MODEL_SAVES
+from modules.util import gap_filling_mlp, gap_filling_rf, get_month_day_from_day_of_year
+from columns import COLS_KEY, COLS_KEY_ALT
+from paths import PATH_PREPROCESSED, PATH_GAPFILLED, PATH_MODEL_SAVES_MLP, PATH_MODEL_SAVES_RF
 from modules.MLPstuff import MLP
 
 
 # SPECIFY THESE
-normalization = True 
-who_trained = 'JM' # author
-num_hidden_units = 60
-num_hidden_layers = 4
+filename_mlp = 'mlp_30_4_JM_norm_01b3187c62d1a0ed0d00b5736092b0d1.pth'
+filename_rf = 'RandomForest_model_ae6a618e4da83a56de13c7eec7152215.pkl'
+
 path_data = PATH_PREPROCESSED + 'data_merged_with_nans.csv'
 
 
-
-# construct model name
-if normalization:
-    model_name = f'mlp_{num_hidden_units}_{num_hidden_layers}_norm_{who_trained}'
-else:
-    model_name = f'mlp_{num_hidden_units}_{num_hidden_layers}_{who_trained}'
-
-
-def fill_gaps(model_name, path_data, path_gapfilled, path_model_saves, normalization):
-    """Perform gapfilling on data using pretrained model. 
+def fill_gaps(path_data, filename_mlp, filename_rf):
+    """Perform gapfilling on data using pretrained mlp. 
 
     Args:
-        model_name (_type_): MLP
-        path_data (_type_): path to data (labeled and unlabeled)
-        path_gapfilled (_type_): path where gapfilled data is stored
-        path_model_saves (_type_): path where model is saved ()
-        normalization (bool) : Load training data statistics if normalization is True
+        path_data (str): path to data (labeled and unlabeled)
+        filename_mlp (str): name of file containing MLP parameters
+        filename_rf (str): name of file containing RF parameters
     """
-    # construct model path
-    path_model = path_model_saves + model_name + '.pth'
 
-    # Load the model
-    model = MLP(len(COLS_FEATURES), len(COLS_LABELS), num_hidden_units=num_hidden_units, num_hidden_layers=num_hidden_layers)
-    model.load_state_dict(torch.load(path_model))
+    ###### MLP
 
+    # extract number of hidden units, hidden layers, whether normalization was used, who trained the mlp
+    parts = filename_mlp.split('_')
+    num_hidden_units = int(parts[1])
+    num_hidden_layers = int(parts[2])
+    normalization = 'norm' in parts
+    path_mlp = PATH_MODEL_SAVES_MLP + filename_mlp
+    path_rf = PATH_MODEL_SAVES_RF + filename_rf
+
+
+    mlp_name = filename_mlp.rstrip('.pth')
+    rf_name = filename_rf.rstrip('.pkl')
+
+    # load MLP features and labels
+    with open(PATH_MODEL_SAVES_MLP + 'features/' + mlp_name + '.json', 'r') as file:
+        cols_features_mlp = json.load(file)
+    with open(PATH_MODEL_SAVES_MLP + 'labels/' + mlp_name + '.json', 'r') as file:
+        cols_labels_mlp = json.load(file)
+
+
+    # load RF features and labels
+    with open(PATH_MODEL_SAVES_RF + 'features/' + rf_name + '.json', 'r') as file:
+        cols_features_rf = json.load(file)
+    with open(PATH_MODEL_SAVES_RF + 'labels/' + rf_name + '.json', 'r') as file:
+        cols_labels_rf = json.load(file)
+
+
+
+
+    if set(cols_labels_rf) != set(cols_labels_mlp):
+        raise ValueError("RF and MLP labels are not the same.")
+    
+
+
+    # check which key was used for MLP
+    if all(elem in cols_features_mlp for elem in COLS_KEY):
+        cols_key_mlp = COLS_KEY
+    elif all(elem in cols_features_mlp for elem in COLS_KEY_ALT):
+        cols_key_mlp = COLS_KEY_ALT
+    else:
+        raise ValueError("MLP features do not contain a valid key")
+    
+
+    # check which key was used for RF
+    if all(elem in cols_features_rf for elem in COLS_KEY):
+        cols_key_rf = COLS_KEY
+    elif all(elem in cols_features_rf for elem in COLS_KEY_ALT):
+        cols_key_rf = COLS_KEY_ALT
+    else:
+        raise ValueError("RF features do not contain a valid key")
+    
+
+    # Load the MLP mlp
+    mlp = MLP(len(cols_features_mlp), len(cols_labels_mlp), num_hidden_units=num_hidden_units, num_hidden_layers=num_hidden_layers)
+    mlp.load_state_dict(torch.load(path_mlp))
 
 
     # load statistics
     if normalization:
         # save statistics
-        model_means_path = path_model_saves + model_name + '_means.npy'
-        model_stds_path = path_model_saves + model_name + '_stds.npy'
+        model_means_path = PATH_MODEL_SAVES_MLP + 'statistics/' + mlp_name + '_means.npy'
+        model_stds_path = PATH_MODEL_SAVES_MLP + 'statistics/' + mlp_name + '_stds.npy'
         trainset_means = np.load(model_means_path)
         trainset_stds = np.load(model_stds_path)
+
+    # load random forest model
+    with open(path_rf, 'rb') as f:
+        rf = pickle.load(f)
 
 
     # load data
     data = pd.read_csv(path_data)
-    df_f = data.copy()
 
 
-    df_mlp = gap_filling_mlp(data=data, model=model, columns_data=COLS_FEATURES, columns_labels=COLS_LABELS, means=trainset_means, stds=trainset_stds)
+    # get both gapfilled dataframes
+    df_mlp = gap_filling_mlp(data=data, mlp=mlp, columns_key=cols_key_mlp, columns_data=cols_features_mlp,
+                             columns_labels=cols_labels_mlp, means=trainset_means, stds=trainset_stds)
 
-    # merge
-    df = df_mlp[COLS_TIME + ["H_f_mlp", "LE_f_mlp"]].merge(df_f, how='outer', on=COLS_TIME)
+    df_rf = gap_filling_rf(data=data, model=rf, columns_key=cols_key_rf, columns_data=cols_features_rf, columns_labels=cols_labels_rf)
 
-    # reconstruct timestamp column
+
+    # make sure both have the same key so that they can be merged (just use the default key)
+    if cols_key_mlp == COLS_KEY_ALT:
+        df_mlp[['month', 'day']] = df_mlp.apply(get_month_day_from_day_of_year, axis=1)
+        df_mlp = df_mlp.drop("day_of_year", axis=1)
+    if cols_key_rf == COLS_KEY_ALT:
+        df_rf[['month', 'day']] = df_rf.apply(get_month_day_from_day_of_year, axis=1)
+        df_rf = df_rf.drop("day_of_year", axis=1)
+
+
+
+    # merge both
+    df = df_mlp[COLS_KEY + [col.replace('_orig', '') + '_f_mlp' for col in cols_labels_mlp]].merge(df_rf, how="inner", on=COLS_KEY)
 
     # Convert the '30min' column to a timedelta representing the minutes
     df['time'] = pd.to_timedelta(df['30min'] * 30, unit='m')
@@ -73,7 +130,7 @@ def fill_gaps(model_name, path_data, path_gapfilled, path_model_saves, normaliza
     df['timestamp'] = pd.to_datetime(df[['year', 'month', 'day']]) + df['time']
 
     # drop year, month, day columns
-    df = df.drop(['year', 'month', 'day', '30min', 'time', 'day_of_year'], axis=1)
+    df = df.drop(['year', 'month', 'day', '30min', 'time'], axis=1)
 
 
     # filter by location and sort by timestamps
@@ -86,10 +143,10 @@ def fill_gaps(model_name, path_data, path_gapfilled, path_model_saves, normaliza
 
 
     # save files
-    df_bg.to_csv(path_gapfilled + 'BG_gapfilled.csv', index=False)
-    df_gw.to_csv(path_gapfilled + 'GW_gapfilled.csv', index=False)
+    df_bg.to_csv(PATH_GAPFILLED + 'BG_gapfilled.csv', index=False)
+    df_gw.to_csv(PATH_GAPFILLED + 'GW_gapfilled.csv', index=False)
 
 
 
 if __name__ == '__main__':
-    fill_gaps(model_name=model_name, path_data=path_data, path_gapfilled=PATH_GAPFILLED, path_model_saves=PATH_MODEL_SAVES, normalization=normalization)
+    fill_gaps(path_data=path_data, filename_mlp=filename_mlp, filename_rf=filename_rf)

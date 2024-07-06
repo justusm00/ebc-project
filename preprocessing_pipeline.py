@@ -3,10 +3,10 @@ import pandas as pd
 from tqdm import tqdm
 
 from soil.soil import fill_thermal_conductivity, compute_soil_heatflux
-from modules.util import transform_timestamp, numerical_to_float
+from modules.util import transform_timestamp, numerical_to_float, get_day_of_year
 
-from columns import COLS_METEO, COLS_FLUXES, COLS_LABELS, COLS_FEATURES, COLS_TIME, COLS_DAYOFYEAR
-from paths import PATH_RAW, PATH_PREPROCESSED, PATH_MLP_TRAINING
+from columns import COLS_METEO, COLS_FLUXES, COLS_LABELS_ALL, COLS_FEATURES_ALL, COLS_KEY
+from paths import PATH_RAW, PATH_PREPROCESSED, PATH_MODEL_TRAINING
 from sklearn.model_selection import train_test_split
 
 
@@ -25,7 +25,7 @@ def preprocess_flux_data(path_raw, path_save, cols):
         _type_: _description_
     """
     # exclude time and location columns from list of columns to be converted to float
-    cols_to_convert = [col for col in cols if col not in COLS_TIME+COLS_DAYOFYEAR]
+    cols_to_convert = [col for col in cols if col not in COLS_KEY]
 
     # collect files to preprocess
     files = [f for f in os.listdir(path_raw) if 'fluxes' in f]
@@ -223,7 +223,9 @@ def merge_data(df_fluxes, df_meteo):
     Returns:
         _type_: _description_
     """
-    df = df_meteo.merge(df_fluxes, how="outer", on=COLS_TIME+COLS_DAYOFYEAR)
+    df = df_meteo.merge(df_fluxes, how="outer", on=COLS_KEY)
+    # add day_of_year_column
+    df['day_of_year'] = df.apply(get_day_of_year, axis=1)
     # save as csv
     df.to_csv('data/preprocessed/data_merged_with_nans.csv', index=False)
 
@@ -231,7 +233,7 @@ def merge_data(df_fluxes, df_meteo):
 
 
 
-def preprocessing_pipeline(path_raw, path_preprocessed, path_mlp_training, cols_fluxes, cols_meteo, cols_features, cols_labels, test_size=0.2, random_state=42):
+def preprocessing_pipeline(path_raw, path_preprocessed, path_model_training, cols_fluxes, cols_meteo, cols_features, cols_labels, test_size=0.2, random_state=42):
     """Preprocessing pipeline to create dataset for Gapfilling MLP.
 
     Args:
@@ -247,8 +249,12 @@ def preprocessing_pipeline(path_raw, path_preprocessed, path_mlp_training, cols_
     df_meteo = preprocess_meteo_data(path_raw, path_preprocessed, cols_meteo)
     df_merged = merge_data(df_meteo, df_fluxes)
 
+
+
     # keep only feature and label columns
     df_merged = df_merged[cols_features + cols_labels]
+
+    
 
     # drop nan rows
     len_before = df_merged.__len__()
@@ -258,8 +264,8 @@ def preprocessing_pipeline(path_raw, path_preprocessed, path_mlp_training, cols_
 
     # do train test split
     # Define features and target
-    X = df_merged.drop(COLS_LABELS, axis=1)  # Features
-    y = df_merged[COLS_LABELS]  # Target
+    X = df_merged.drop(cols_labels, axis=1)  # Features
+    y = df_merged[cols_labels]  # Target
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=random_state)
     # concatenate again
     df_train = pd.concat([X_train, y_train], axis=1)
@@ -267,13 +273,14 @@ def preprocessing_pipeline(path_raw, path_preprocessed, path_mlp_training, cols_
 
 
     # save as csv
-    df_train.to_csv(path_mlp_training + 'training_data.csv', index=False)
-    df_test.to_csv(path_mlp_training + 'test_data.csv', index=False)
+    df_train.to_csv(path_model_training + 'training_data.csv', index=False)
+    df_test.to_csv(path_model_training + 'test_data.csv', index=False)
 
     return 
 
 
 if __name__ == '__main__': 
-    preprocessing_pipeline(path_raw=PATH_RAW, path_preprocessed=PATH_PREPROCESSED, path_mlp_training=PATH_MLP_TRAINING,
-                           cols_fluxes=COLS_FLUXES+COLS_DAYOFYEAR, cols_meteo=COLS_METEO+COLS_DAYOFYEAR,
-                           cols_features=COLS_FEATURES+COLS_DAYOFYEAR, cols_labels=COLS_LABELS+COLS_DAYOFYEAR)
+    preprocessing_pipeline(path_raw=PATH_RAW, path_preprocessed=PATH_PREPROCESSED, 
+                           path_model_training=PATH_MODEL_TRAINING,
+                           cols_fluxes=COLS_FLUXES, cols_meteo=COLS_METEO,
+                           cols_features=COLS_FEATURES_ALL, cols_labels=COLS_LABELS_ALL)

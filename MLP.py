@@ -1,6 +1,9 @@
 # important  imports
 import os
 import numpy as np
+import hashlib
+import json
+
 
 import torch
 import torch.nn as nn   
@@ -11,47 +14,78 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 ############# UTILITIES ############
 
-from modules.util import EBCDataset, grab_data, train_val_splitter, data_loaders
+from modules.util import grab_data, train_val_splitter, data_loaders, get_hash_from_features_and_labels
 from modules.MLPstuff import run_training, MLP, test
-from columns import COLS_FEATURES, COLS_LABELS
-from paths import PATH_MLP_TRAINING, PATH_MODEL_SAVES, PATH_PLOTS
+from columns import COLS_FEATURES_ALL, COLS_LABELS_ALL, COLS_KEY
+from paths import PATH_MODEL_TRAINING, PATH_MODEL_SAVES_MLP, PATH_PLOTS
 
 
 
 # SPECIFY THESE
+cols_features = COLS_KEY + ["incomingShortwaveRadiation", "soilHeatflux", "waterPressureDeficit", "windSpeed"] 
+cols_labels = COLS_LABELS_ALL
 normalization = True 
 who_trained = 'JM' # author
 GPU = False
-num_epochs = 100
-lr = 10**(-3)
-num_hidden_units = 60
+num_epochs = 2
+lr = 10**(-2)
+num_hidden_units = 30
 num_hidden_layers = 4
 batch_size = 10
 
-# construct model name
-if normalization:
-    model_name = f'mlp_{num_hidden_units}_{num_hidden_layers}_norm_{who_trained}'
-else:
-    model_name = f'mlp_{num_hidden_units}_{num_hidden_layers}_{who_trained}'
 
 
 
-def train_mlp(model_name, normalization, GPU, num_epochs, lr, path_model_saves, batch_size, path_plots):
+def train_mlp(GPU, num_epochs, lr,
+              path_model_saves, batch_size, path_plots, cols_features=COLS_FEATURES_ALL, cols_labels=COLS_LABELS_ALL, normalization=True):
     """Train MLP.
 
     Args:
-        model_name (_type_): model name
-        normalization (bool): If True, normalize trainset and save statistics.
         GPU (bool): if GPU should be used
         num_epochs (_type_): Number of epochs trained
         lr (_type_): learning rate
         path_model_saves (_type_): path where model and trainset statistics are saved
         batch_size (_type_):
         path_plots (str): path where plots are stored (as png)
+        cols_features (list): columns used as training features
+        cols_labels (list): columns used as labels
+        normalization (bool): If True, normalize trainset and save statistics.
+
 
     Returns:
         _type_: _description_
     """
+    # check if time columns are present as features
+    for col in COLS_KEY:
+        if col not in cols_features:
+            raise ValueError(f"Features must contain all of {COLS_KEY}")
+        
+    # Create a hash based on the features and labels
+    model_hash = get_hash_from_features_and_labels(cols_features=cols_features, cols_labels=cols_labels)
+
+    # construct model name
+    if normalization:
+        model_name = f'mlp_{num_hidden_units}_{num_hidden_layers}_{who_trained}_norm_{model_hash}'
+    else:
+        model_name = f'mlp_{num_hidden_units}_{num_hidden_layers}_{who_trained}_{model_hash}'
+
+    print("\n")
+    print(f"Features used: {len(cols_features)} ({cols_features}) \n")
+    print(f"Labels used: {len(cols_labels)} ({cols_labels}) \n")
+    # save features and labels
+    features_json = path_model_saves + 'features/' + model_name + '.json'
+    labels_json = path_model_saves + 'labels/' + model_name + '.json'
+    with open(features_json, 'w') as file:
+        json.dump(cols_features, file)
+    with open(labels_json, 'w') as file:
+        json.dump(cols_labels, file)
+
+    print(f"Saved list of features to {features_json} \n")
+
+    print(f"Saved list of labels to {labels_json} \n")
+
+    
+
     # Get number of cpus to use for faster parallelized data loading
     avb_cpus = os.cpu_count()
     num_cpus = 4
@@ -85,18 +119,18 @@ def train_mlp(model_name, normalization, GPU, num_epochs, lr, path_model_saves, 
     device = get_device()
 
 
-    trainset, testset = grab_data(PATH_MLP_TRAINING + 'training_data.csv', PATH_MLP_TRAINING + 'test_data.csv', num_cpus,
-                                                            COLS_FEATURES, COLS_LABELS, normalization=normalization)
+    trainset, testset = grab_data(PATH_MODEL_TRAINING + 'training_data.csv', PATH_MODEL_TRAINING + 'test_data.csv', num_cpus, cols_features, cols_labels, normalization=normalization)
 
     trainset, valset = train_val_splitter(trainset)
 
-    trainloader, valloader, testloader = data_loaders(trainset, valset, testset, num_cpus=num_cpus, batch_size=batch_size)
+    trainloader, valloader, testloader = data_loaders(trainset, valset, testset,
+                                                      num_cpus=num_cpus, batch_size=batch_size)
 
 
     if normalization:
         # save statistics
-        model_means_path = 'model_saves/' + model_name + '_means.npy'
-        model_stds_path = 'model_saves/' + model_name + '_stds.npy'
+        model_means_path = path_model_saves + 'statistics/' + model_name + '_means.npy'
+        model_stds_path = path_model_saves + 'statistics/'  + model_name + '_stds.npy'
         np.save(model_means_path, trainset.dataset.means.numpy())
         np.save(model_stds_path, trainset.dataset.stds.numpy())
         print(f"Saved means to {model_means_path} \n")
@@ -107,7 +141,7 @@ def train_mlp(model_name, normalization, GPU, num_epochs, lr, path_model_saves, 
 
     print("Test run with small learning rate for single epoch ... \n")
 
-    model = MLP(len(COLS_FEATURES), len(COLS_LABELS), num_hidden_units=num_hidden_units, num_hidden_layers=num_hidden_layers).to(device)
+    model = MLP(len(cols_features), len(cols_labels), num_hidden_units=num_hidden_units, num_hidden_layers=num_hidden_layers).to(device)
     print("Model architecture: \n")
     print(model.eval())
     # Set loss function and optimizer
@@ -115,8 +149,9 @@ def train_mlp(model_name, normalization, GPU, num_epochs, lr, path_model_saves, 
     optimizer = optim.Adam(model.parameters(), lr=1e-5)
 
 
-    train_losses, val_losses = run_training(model=model, optimizer=optimizer, num_epochs=1, train_dataloader=trainloader, val_dataloader=valloader, 
-                                                                device=device, loss_fn=criterion, patience=5, early_stopper=False, verbose=False, plot_results=False)
+    train_losses, val_losses = run_training(model=model, optimizer=optimizer, num_epochs=1,
+                                             train_dataloader=trainloader, val_dataloader=valloader,
+                                             device=device, loss_fn=criterion, patience=5, early_stopper=False, verbose=False, plot_results=False)
 
     print(f"Initial train loss: {train_losses} \n")
     print(f"Initial val loss: {val_losses} \n")
@@ -131,17 +166,19 @@ def train_mlp(model_name, normalization, GPU, num_epochs, lr, path_model_saves, 
         torch.cuda.empty_cache()
 
     # Initialize the model
-    model = MLP(len(COLS_FEATURES), len(COLS_LABELS), num_hidden_units=num_hidden_units, num_hidden_layers=num_hidden_layers).to(device)
+    model = MLP(len(cols_features), len(cols_labels), num_hidden_units=num_hidden_units, num_hidden_layers=num_hidden_layers).to(device)
     # Set loss function and optimizer
     criterion = nn.MSELoss()
     optimizer = optim.Adam(model.parameters(), lr=lr)
-    scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=8,
+    scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.9, patience=5,
                                 threshold=0.0001, threshold_mode='rel', cooldown=0, min_lr=1e-5)
 
 
 
-    train_losses, val_losses = run_training(model=model, optimizer=optimizer, num_epochs=num_epochs, train_dataloader=trainloader, val_dataloader=valloader, 
-                                                                device=device, loss_fn=criterion, patience=10, early_stopper=True, scheduler=scheduler, verbose=True, plot_results=True, save_plots_path=path_plots + 'loss/' + model_name + '_loss' + '.png')
+    train_losses, val_losses = run_training(model=model, optimizer=optimizer, num_epochs=num_epochs, 
+                                            train_dataloader=trainloader, val_dataloader=valloader, device=device, loss_fn=criterion, patience=10, 
+                                            early_stopper=True, scheduler=scheduler, verbose=True, plot_results=True,
+                                            save_plots_path=path_plots + 'loss/' + model_name + '_loss' + '.png')
 
 
     # Save the model
@@ -156,5 +193,7 @@ def train_mlp(model_name, normalization, GPU, num_epochs, lr, path_model_saves, 
 
 
 if __name__ == '__main__':
-    train_mlp(model_name=model_name, normalization=normalization, GPU=GPU, num_epochs=num_epochs, lr=lr,
-              path_model_saves=PATH_MODEL_SAVES, batch_size=batch_size, path_plots=PATH_PLOTS)
+    train_mlp(GPU=GPU, num_epochs=num_epochs, lr=lr,
+              path_model_saves=PATH_MODEL_SAVES_MLP, batch_size=batch_size,
+              path_plots=PATH_PLOTS, cols_features=cols_features,
+              cols_labels=cols_labels, normalization=normalization)

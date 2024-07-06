@@ -3,9 +3,9 @@ import pandas as pd
 
 import torch
 from torch.utils.data import Dataset, DataLoader
-from columns import COLS_FEATURES, COLS_LABELS, COLS_TIME
 from modules.MLPstuff import MLP
-import json
+import datetime
+import hashlib
 
 
 
@@ -192,12 +192,13 @@ def data_loaders(trainset, valset, testset, batch_size=64, num_cpus=1):
 
 
 
-def gap_filling_mlp(data, model, columns_data, columns_labels, means=None, stds=None):
+def gap_filling_mlp(data, mlp, columns_key, columns_data, columns_labels, means=None, stds=None):
     """Fill gaps using pretrained model.
 
     Args:
         data (pd.DataFrame): Pandas dataframe containing prediction data
-        model (modules.MLPstuff.MLP): model
+        mlp (modules.MLPstuff.MLP): model
+        columns_key (list): columns that uniquely identify a record
         columns_data (list): list of column names used for training
         columns_labels (list): list of column names to predict
         means (list, optional): List of means, must be provided if training was done on normalized data. Defaults to None.
@@ -229,22 +230,97 @@ def gap_filling_mlp(data, model, columns_data, columns_labels, means=None, stds=
         input_tensor = (input_tensor - means) / stds
 
     with torch.no_grad():
-        pred = model(input_tensor).numpy() #  Transform back to numpy 
+        pred = mlp(input_tensor).numpy() #  Transform back to numpy 
 
     # create dataframe of predictions 
-    pred = pd.DataFrame(pred, columns=columns_labels)
+    columns_labels_pred = [col.replace('_orig', '') + '_f_mlp'  for col in columns_labels]
+    pred = pd.DataFrame(pred, columns=columns_labels_pred)
 
+    
     # merge predictions onto features
     data_pred = pd.concat([input, pred], axis=1)
 
 
-    # create original dataframe
-    data_orig = data[~mask_nan].reset_index(drop=True)
+    # merge both dataframes
+    data_merged = data.merge(data_pred[columns_key + columns_labels_pred], how="outer", on=columns_key)
+
+    # now, the gapfilled columns have nan values where the original data is not nan. In this case, just take the original values
+    for col_f, col in zip(columns_labels_pred, columns_labels):
+        data_merged[col_f] = data_merged[col_f].fillna(data_merged[col])
+
+
+    return data_merged
+
+
+
+def gap_filling_rf(data, model, columns_key, columns_data, columns_labels):
+    """Fill gaps using pretrained Random Forest model.
+
+    Args:
+        data (pd.DataFrame): Pandas dataframe containing prediction data
+        model (_type_): RandomForestRegressor
+        columns_key (list): columns that uniquely identify a record
+        columns_data (list): list of column names used for training
+        columns_labels (list): list of column names to predict
+
+    Returns:
+        pd.DataFrame: Dataframe containing the original data and the MLP gap filled data.
+    """
+    # identify rows where labels are NaN, but features aren't
+    mask_nan = data[columns_labels].isna().any(axis=1)
+    mask_not_nan = data[columns_data].notna().all(axis=1)
+
+    # Combine the masks
+    combined_mask = mask_nan & mask_not_nan
+
+    # data used for prediction
+    X = data[combined_mask][columns_data].reset_index(drop=True)
+
+    # create dataframe of predictions 
+    columns_labels_pred = [col.replace('_orig', '') + '_f_rf'  for col in columns_labels]
+    y = model.predict(X)
+    y = pd.DataFrame(y, columns=columns_labels_pred)
+    # merge predictions onto features
+    data_pred = pd.concat([X, y], axis=1)
+
 
     # merge both dataframes
-    data_merged = pd.concat([data_orig, data_pred])
+    data_merged = data.merge(data_pred[columns_key + columns_labels_pred], how="outer", on=columns_key)
 
-    # rename columns 
-    data_final = data_merged.rename(columns={col: col.replace('_orig', '') + '_f_mlp' for col in columns_labels})
+    # now, the gapfilled columns have nan values where the original data is not nan. In this case, just take the original values
+    for col_f, col in zip(columns_labels_pred, columns_labels):
+        data_merged[col_f] = data_merged[col_f].fillna(data_merged[col])
 
-    return data_final
+    return data_merged
+
+
+def get_hash_from_features_and_labels(cols_features, cols_labels):
+    """Creates a unique hash for each combination of features and labels, used to save models. 
+
+    Args:
+        cols_features (_type_): _description_
+        cols_labels (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """
+    # Convert the list to a sorted tuple to ensure order doesn't matter
+    list_conc = cols_features + cols_labels
+    sorted_list = tuple(sorted(list_conc))
+    
+    # Create a hash from the sorted tuple
+    list_str = str(sorted_list)  # Convert the sorted tuple to a string
+    return hashlib.md5(list_str.encode()).hexdigest()  # Use MD5 hash
+
+
+# Function to calculate day of the year
+def get_day_of_year(row):
+    date = datetime.datetime(row['year'], row['month'], row['day'])
+    return date.timetuple().tm_yday
+
+
+def get_month_day_from_day_of_year(row):
+    year = int(row['year'])
+    day_of_year = int(row['day_of_year'])
+    date_obj = datetime.date(year, 1, 1) + datetime.timedelta(days=day_of_year - 1)
+    return pd.Series([date_obj.month, date_obj.day])
