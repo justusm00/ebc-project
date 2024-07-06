@@ -4,27 +4,23 @@ import numpy as np
 import pandas as pd
 import matplotlib as plt
 import pickle
-import hashlib
 import json
 
 
-from columns import COLS_LABELS_ALL, COLS_TIME
+from columns import COLS_LABELS_ALL, COLS_KEY, COLS_KEY_ALT
 from paths import PATH_MODEL_TRAINING, PATH_MODEL_SAVES_RF
 from modules.util import get_hash_from_features_and_labels
 
 
 # ALWAYS SPECIFY THESE
-cols_features = COLS_TIME + ["incomingShortwaveRadiation", "soilHeatflux", "waterPressureDeficit", "windSpeed"] 
+cols_key = COLS_KEY_ALT # must be COLS_KEY or COLS_KEY_ALT
+cols_features = cols_key + ["incomingShortwaveRadiation", "soilHeatflux", "waterPressureDeficit", "windSpeed"] 
 cols_labels = COLS_LABELS_ALL
 
 
 
 
 def fit_rf(cols_features, cols_labels, path_model_saves):
-    # check if time columns are present as features
-    for col in COLS_TIME:
-        if col not in cols_features:
-            raise ValueError(f"Features must contain all of {COLS_TIME}")
     # Create a hash based on the features and labels
     model_hash = get_hash_from_features_and_labels(cols_features=cols_features, cols_labels=cols_labels)
 

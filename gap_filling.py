@@ -6,15 +6,15 @@ import json
 import pickle
 
 
-from modules.util import gap_filling_mlp, gap_filling_rf
-from columns import COLS_TIME
+from modules.util import gap_filling_mlp, gap_filling_rf, get_month_day_from_day_of_year
+from columns import COLS_KEY, COLS_KEY_ALT
 from paths import PATH_PREPROCESSED, PATH_GAPFILLED, PATH_MODEL_SAVES_MLP, PATH_MODEL_SAVES_RF
 from modules.MLPstuff import MLP
 
 
 # SPECIFY THESE
-filename_mlp = 'mlp_30_4_JM_norm_cf0bf767f80bae3df4fd16c2fb879053.pth'
-filename_rf = 'RandomForest_model_cf0bf767f80bae3df4fd16c2fb879053.pkl'
+filename_mlp = 'mlp_30_4_JM_norm_01b3187c62d1a0ed0d00b5736092b0d1.pth'
+filename_rf = 'RandomForest_model_ae6a618e4da83a56de13c7eec7152215.pkl'
 
 path_data = PATH_PREPROCESSED + 'data_merged_with_nans.csv'
 
@@ -48,14 +48,37 @@ def fill_gaps(path_data, filename_mlp, filename_rf):
     with open(PATH_MODEL_SAVES_MLP + 'labels/' + mlp_name + '.json', 'r') as file:
         cols_labels_mlp = json.load(file)
 
+
     # load RF features and labels
     with open(PATH_MODEL_SAVES_RF + 'features/' + rf_name + '.json', 'r') as file:
         cols_features_rf = json.load(file)
     with open(PATH_MODEL_SAVES_RF + 'labels/' + rf_name + '.json', 'r') as file:
         cols_labels_rf = json.load(file)
 
+
+
+
     if set(cols_labels_rf) != set(cols_labels_mlp):
         raise ValueError("RF and MLP labels are not the same.")
+    
+
+
+    # check which key was used for MLP
+    if all(elem in cols_features_mlp for elem in COLS_KEY):
+        cols_key_mlp = COLS_KEY
+    elif all(elem in cols_features_mlp for elem in COLS_KEY_ALT):
+        cols_key_mlp = COLS_KEY_ALT
+    else:
+        raise ValueError("MLP features do not contain a valid key")
+    
+
+    # check which key was used for RF
+    if all(elem in cols_features_rf for elem in COLS_KEY):
+        cols_key_rf = COLS_KEY
+    elif all(elem in cols_features_rf for elem in COLS_KEY_ALT):
+        cols_key_rf = COLS_KEY_ALT
+    else:
+        raise ValueError("RF features do not contain a valid key")
     
 
     # Load the MLP mlp
@@ -76,19 +99,29 @@ def fill_gaps(path_data, filename_mlp, filename_rf):
         rf = pickle.load(f)
 
 
-
-
     # load data
     data = pd.read_csv(path_data)
 
 
     # get both gapfilled dataframes
-    df_mlp = gap_filling_mlp(data=data, mlp=mlp, columns_data=cols_features_mlp, columns_labels=cols_labels_mlp, means=trainset_means, stds=trainset_stds)
+    df_mlp = gap_filling_mlp(data=data, mlp=mlp, columns_key=cols_key_mlp, columns_data=cols_features_mlp,
+                             columns_labels=cols_labels_mlp, means=trainset_means, stds=trainset_stds)
 
-    df_rf = gap_filling_rf(data=data, model=rf, columns_data=cols_features_rf, columns_labels=cols_labels_rf)
+    df_rf = gap_filling_rf(data=data, model=rf, columns_key=cols_key_rf, columns_data=cols_features_rf, columns_labels=cols_labels_rf)
+
+
+    # make sure both have the same key so that they can be merged (just use the default key)
+    if cols_key_mlp == COLS_KEY_ALT:
+        df_mlp[['month', 'day']] = df_mlp.apply(get_month_day_from_day_of_year, axis=1)
+        df_mlp = df_mlp.drop("day_of_year", axis=1)
+    if cols_key_rf == COLS_KEY_ALT:
+        df_rf[['month', 'day']] = df_rf.apply(get_month_day_from_day_of_year, axis=1)
+        df_rf = df_rf.drop("day_of_year", axis=1)
+
+
 
     # merge both
-    df = df_mlp[COLS_TIME + [col.replace('_orig', '') + '_f_mlp' for col in cols_labels_mlp]].merge(df_rf, how="inner", on=COLS_TIME)
+    df = df_mlp[COLS_KEY + [col.replace('_orig', '') + '_f_mlp' for col in cols_labels_mlp]].merge(df_rf, how="inner", on=COLS_KEY)
 
     # Convert the '30min' column to a timedelta representing the minutes
     df['time'] = pd.to_timedelta(df['30min'] * 30, unit='m')

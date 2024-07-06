@@ -16,13 +16,13 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 from modules.util import grab_data, train_val_splitter, data_loaders, get_hash_from_features_and_labels
 from modules.MLPstuff import run_training, MLP, test
-from columns import COLS_FEATURES_ALL, COLS_LABELS_ALL, COLS_TIME
+from columns import COLS_FEATURES_ALL, COLS_LABELS_ALL, COLS_KEY
 from paths import PATH_MODEL_TRAINING, PATH_MODEL_SAVES_MLP, PATH_PLOTS
 
 
 
 # SPECIFY THESE
-cols_features = COLS_TIME + ["incomingShortwaveRadiation", "soilHeatflux", "waterPressureDeficit", "windSpeed"] 
+cols_features = COLS_KEY + ["incomingShortwaveRadiation", "soilHeatflux", "waterPressureDeficit", "windSpeed"] 
 cols_labels = COLS_LABELS_ALL
 normalization = True 
 who_trained = 'JM' # author
@@ -56,9 +56,9 @@ def train_mlp(GPU, num_epochs, lr,
         _type_: _description_
     """
     # check if time columns are present as features
-    for col in COLS_TIME:
+    for col in COLS_KEY:
         if col not in cols_features:
-            raise ValueError(f"Features must contain all of {COLS_TIME}")
+            raise ValueError(f"Features must contain all of {COLS_KEY}")
         
     # Create a hash based on the features and labels
     model_hash = get_hash_from_features_and_labels(cols_features=cols_features, cols_labels=cols_labels)

@@ -4,7 +4,7 @@ import pandas as pd
 import torch
 from torch.utils.data import Dataset, DataLoader
 from modules.MLPstuff import MLP
-from columns import COLS_TIME
+import datetime
 import hashlib
 
 
@@ -30,7 +30,7 @@ def transform_timestamp(df, col_name):
     df['year'] = df[f'{col_name}'].apply(lambda x: pd.to_datetime(x, format='%Y-%m-%d %H:%M:%S').year)
     df['month'] = df[f'{col_name}'].apply(lambda x: pd.to_datetime(x, format='%Y-%m-%d %H:%M:%S').month)
     df['day'] = df[f'{col_name}'].apply(lambda x: pd.to_datetime(x, format='%Y-%m-%d %H:%M:%S').day)
-    # df['day_of_year'] = df['date'].dt.dayofyear
+    df['day_of_year'] = df['date'].dt.dayofyear
 
     """
     Robin: Encode the 30 minute intervals using integers
@@ -192,12 +192,13 @@ def data_loaders(trainset, valset, testset, batch_size=64, num_cpus=1):
 
 
 
-def gap_filling_mlp(data, mlp, columns_data, columns_labels, means=None, stds=None):
+def gap_filling_mlp(data, mlp, columns_key, columns_data, columns_labels, means=None, stds=None):
     """Fill gaps using pretrained model.
 
     Args:
         data (pd.DataFrame): Pandas dataframe containing prediction data
         mlp (modules.MLPstuff.MLP): model
+        columns_key (list): columns that uniquely identify a record
         columns_data (list): list of column names used for training
         columns_labels (list): list of column names to predict
         means (list, optional): List of means, must be provided if training was done on normalized data. Defaults to None.
@@ -241,7 +242,7 @@ def gap_filling_mlp(data, mlp, columns_data, columns_labels, means=None, stds=No
 
 
     # merge both dataframes
-    data_merged = data.merge(data_pred[COLS_TIME + columns_labels_pred], how="outer", on=COLS_TIME)
+    data_merged = data.merge(data_pred[columns_key + columns_labels_pred], how="outer", on=columns_key)
 
     # now, the gapfilled columns have nan values where the original data is not nan. In this case, just take the original values
     for col_f, col in zip(columns_labels_pred, columns_labels):
@@ -252,12 +253,13 @@ def gap_filling_mlp(data, mlp, columns_data, columns_labels, means=None, stds=No
 
 
 
-def gap_filling_rf(data, model, columns_data, columns_labels):
+def gap_filling_rf(data, model, columns_key, columns_data, columns_labels):
     """Fill gaps using pretrained Random Forest model.
 
     Args:
         data (pd.DataFrame): Pandas dataframe containing prediction data
         model (_type_): RandomForestRegressor
+        columns_key (list): columns that uniquely identify a record
         columns_data (list): list of column names used for training
         columns_labels (list): list of column names to predict
 
@@ -283,7 +285,7 @@ def gap_filling_rf(data, model, columns_data, columns_labels):
 
 
     # merge both dataframes
-    data_merged = data.merge(data_pred[COLS_TIME + columns_labels_pred], how="outer", on=COLS_TIME)
+    data_merged = data.merge(data_pred[columns_key + columns_labels_pred], how="outer", on=columns_key)
 
     # now, the gapfilled columns have nan values where the original data is not nan. In this case, just take the original values
     for col_f, col in zip(columns_labels_pred, columns_labels):
@@ -309,3 +311,16 @@ def get_hash_from_features_and_labels(cols_features, cols_labels):
     # Create a hash from the sorted tuple
     list_str = str(sorted_list)  # Convert the sorted tuple to a string
     return hashlib.md5(list_str.encode()).hexdigest()  # Use MD5 hash
+
+
+# Function to calculate day of the year
+def get_day_of_year(row):
+    date = datetime.datetime(row['year'], row['month'], row['day'])
+    return date.timetuple().tm_yday
+
+
+def get_month_day_from_day_of_year(row):
+    year = int(row['year'])
+    day_of_year = int(row['day_of_year'])
+    date_obj = datetime.date(year, 1, 1) + datetime.timedelta(days=day_of_year - 1)
+    return pd.Series([date_obj.month, date_obj.day])
