@@ -14,7 +14,7 @@ import torch.optim as optim
 ############# UTILITIES ############
 
 from modules.util import grab_data, train_val_splitter, data_loaders, get_hash_from_features_and_labels
-from modules.MLPstuff import run_training, MLP, test, MyReduceLROnPlateau
+from modules.MLPstuff import run_training, MLP, test, MyReduceLROnPlateau, SingleBatchDataLoader
 from columns import COLS_FEATURES_ALL, COLS_LABELS_ALL, COLS_KEY, COLS_KEY_ALT
 from paths import PATH_MODEL_TRAINING, PATH_MODEL_SAVES_MLP, PATH_PLOTS
 
@@ -114,6 +114,9 @@ def train_mlp(GPU, num_epochs, lr,
 
     device = get_device()
 
+    if GPU==True:
+        torch.cuda.empty_cache()
+
 
     trainset, testset = grab_data(PATH_MODEL_TRAINING + 'training_data.csv', PATH_MODEL_TRAINING + 'test_data.csv',
                                   num_cpus, cols_features, cols_labels, normalization=normalization, minmax_scaling=minmax_scaling)
@@ -122,34 +125,35 @@ def train_mlp(GPU, num_epochs, lr,
 
     trainloader, valloader, testloader = data_loaders(trainset, valset, testset,
                                                       num_cpus=num_cpus, batch_size=batch_size)
+    
+
+    # create single batch dataloaders for intentional overfitting
+
+    trainloader_of = SingleBatchDataLoader(trainloader)
+    valloader_of = SingleBatchDataLoader(valloader)
 
 
 
-    # print("Test run with small learning rate for single epoch ... \n")
+    print("Trying to overfit on single batch ... \n")
 
-    # model = MLP(len(cols_features), len(cols_labels), num_hidden_units=num_hidden_units, num_hidden_layers=num_hidden_layers).to(device)
-    # print("Model architecture: \n")
-    # print(model.eval())
-    # # Set loss function and optimizer
-    # criterion = nn.MSELoss()
-    # optimizer = optim.Adam(model.parameters(), lr=1e-5)
+    model = MLP(len(cols_features), len(cols_labels), num_hidden_units=num_hidden_units, num_hidden_layers=num_hidden_layers).to(device)
+    # Set loss function and optimizer
+    criterion = nn.MSELoss()
+    optimizer = optim.Adam(model.parameters(), lr=1e-3)
 
 
-    # train_losses, val_losses = run_training(model=model, optimizer=optimizer, num_epochs=1,
-    #                                          train_dataloader=trainloader, val_dataloader=valloader,
-    #                                          device=device, loss_fn=criterion, patience=5, early_stopper=False, verbose=False, plot_results=False)
+    train_losses, val_losses = run_training(model=model, optimizer=optimizer, num_epochs=1000,
+                                             train_dataloader=trainloader_of, val_dataloader=valloader_of,
+                                             device=device, loss_fn=criterion, patience=5, early_stopper=False, verbose=False, plot_results=True)
 
-    # print(f"Initial train loss: {train_losses} \n")
-    # print(f"Initial val loss: {val_losses} \n")
 
 
 
 
     print("Beginning actual training ... \n")
-
-
-    if GPU==True:
-        torch.cuda.empty_cache()
+    
+    print("Model architecture: \n")
+    print(model.eval())
 
     # Initialize the model
     model = MLP(len(cols_features), len(cols_labels), num_hidden_units=num_hidden_units, num_hidden_layers=num_hidden_layers).to(device)

@@ -130,6 +130,16 @@ class MyReduceLROnPlateau(ReduceLROnPlateau):
 
 
 
+# Function to create a sub-dataloader that only iterates over the first batch
+class SingleBatchDataLoader:
+    def __init__(self, dataloader):
+        self.batch = next(iter(dataloader))
+        
+    def __iter__(self):
+        return iter([self.batch])
+    
+    def __len__(self):
+        return 1
         
 
 ############# TRAINING FUNCTIONS ###############
@@ -347,6 +357,9 @@ def run_training(model, optimizer, num_epochs, train_dataloader, val_dataloader,
     if plot_results:
         plot("Loss", "Loss", train_losses, val_losses, save_path=save_plots_path)
     return train_losses, val_losses
+
+
+
 
 
 
