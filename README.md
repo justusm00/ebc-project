@@ -27,18 +27,39 @@
 - If we can't get to 15 minutes in our presentation :D 
 
 
-# Code workflow for MLP gap filling
+# Code workflow for gap filling
 
 ## Preprocessing
 
-1. In columns.py, specify
-    - columns used from flux data (COLS_FLUXES) and meteo data (COLS_METEO), all others are dropped
-    - columns used as training features (COLS_FEATURES) and labels (COLS_LABELS), of course these must be included in COLS_FLUXES or COLS_METEO
+Run script preprocessing_pipeline.py. This creates the following files: 
+- data_merged_with_nans.csv, flux_data_preprocessed.csv and meteo_data_preprocessed.csv under PATH_PREPROCESSED
+- test_data.csv and training_data.csv under PATH_MODEL_TRAINING
 
-2. Run script preprocessing_pipeline.py. This creates the following files: 
-    - data_merged_with_nans.csv, flux_data_preprocessed.csv and meteo_data_preprocessed.csv under PATH_PREPROCESSED
-    - test_data.csv and training_data.csv under PATH_MLP_TRAINING
+## MLP Training
 
-3. Specify MLP parameters in MLP.py and run script. This trains the MLP and saves it under PATH_MODEL_SAVES. If normalization is True, the trainset statistics are also saved under PATH_MODEL_SAVES
+In MLP.py, you need to specify:
+- features
+- labels
+- normalization T/F
+- your initials
+- further training / architecture params
 
-4. Specify parameters in gap_filling.py and run the script. This creates two gapfilled datasets (one for GW and one for BG) under PATH_GAPFILLED. The model is automatically loaded according to the parameters specified. If normalization is true, the trainset statistics are automatically loaded.
+When running the script, the model name is automatically created. The features and and labels are saved under model_saves/mlp/features and model_saves/mlp/labels, so that they can later be loaded for the gap filling. For each unique configuration of features/labels, a hash is created and added to the model name. This way, it is possible to easily train the same model architecture with different features / labels and use it directly for prediction without having to redefine anything in columns.py. If normalization is set to True, the trainset statistics (mean and standard deviation) are saved to model_saves/mlp/statistics. It is important that the trainset statistics are used also to normalize the testset or new, unlabeled data.
+
+TODO: find a way around hardcoding the params
+
+
+## Random Forest Training
+
+In RandomForest.py, you need to specify the features and labels that should be used for training. The features can be different from the ones used for the MLP, but the labels should be the same. The script fits the random forest to the test data using some hardcoded parameters (feel free to change). Similar to the MLP training, a hash is created based on the features and labels and the model is saved to model_saves/rf/ using this hash. 
+
+
+
+## Gap filling
+
+In gap_filling.py, you only need to specify the path where the MLP and the RF are saved and the path to the preprocessed data. Everything else (features, labels, model architecture etc.) is determined from the model path. The script creates two files under data/gapfilled/ :
+
+- BG_gapfilled.csv
+- GW_gapfilled.csv
+
+The data contains separate columns for gapfilling done with Marginal Distribution Sampling (-> the _f columns), MLP (-> the _f_mlp columns) and RF (-> the _f_rf columns).

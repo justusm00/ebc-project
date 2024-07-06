@@ -1,12 +1,10 @@
-# time and location columns, don't change this
+# time and location columns, don't change this, needed for merging !!
 COLS_TIME = ["year", "month", "day", "30min", "location"]
-COLS_DAYOFYEAR = ["day_of_year"]
+# all possible columns that can be used as labels for mlp training (nan filtering is done based on these)
+COLS_LABELS_ALL = ["H_orig", "LE_orig"]
 
-# columns used as labels for mlp training (nan filtering is done based on these)
-COLS_LABELS = ["H_orig", "LE_orig"]
-
-# columns used as features for mlp training 
-COLS_FEATURES = COLS_TIME + ["netRadiation", "soilHeatflux", "airPressure",
+# all possible columns tha can be used as features for mlp training (nan filtering is done based on these)
+COLS_FEATURES_ALL = COLS_TIME + ["netRadiation", "incomingShortwaveRadiation", "soilHeatflux", "airPressure",
                  "waterPressureDeficit", "waterVaporPressure", "windSpeed", "relativeHumidity"]
 # COLS_FEATURES = COLS_TIME + ["incomingShortwaveRadiation", "soilHeatflux", "waterPressureDeficit", "windSpeed"] # Results from importance analysis
 
@@ -15,7 +13,7 @@ COLS_FEATURES = COLS_TIME + ["netRadiation", "soilHeatflux", "airPressure",
 COLS_FLUXES = COLS_TIME + ["H_orig", "LE_orig", "H_f", "LE_f"]
 
 # columns to keep from meteo data
-COLS_METEO = COLS_TIME + ["soilHeatflux", "airPressure",
+COLS_METEO = COLS_TIME + ["soilHeatflux", "airPressure", "incomingShortwaveRadiation", 
               "waterPressureDeficit", "waterVaporPressure", "windSpeed", "relativeHumidity", "netRadiation"]
 
 
