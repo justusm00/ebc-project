@@ -22,9 +22,9 @@ from paths import PATH_MLP_TRAINING, PATH_MODEL_SAVES, PATH_PLOTS
 normalization = True 
 who_trained = 'JM' # author
 GPU = False
-num_epochs = 100
-lr = 10**(-3)
-num_hidden_units = 60
+num_epochs = 200
+lr = 10**(-2)
+num_hidden_units = 30
 num_hidden_layers = 4
 batch_size = 10
 
@@ -135,7 +135,7 @@ def train_mlp(model_name, normalization, GPU, num_epochs, lr, path_model_saves, 
     # Set loss function and optimizer
     criterion = nn.MSELoss()
     optimizer = optim.Adam(model.parameters(), lr=lr)
-    scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=8,
+    scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.9, patience=5,
                                 threshold=0.0001, threshold_mode='rel', cooldown=0, min_lr=1e-5)
 
 

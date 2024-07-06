@@ -13,7 +13,7 @@ from modules.MLPstuff import MLP
 # SPECIFY THESE
 normalization = True 
 who_trained = 'JM' # author
-num_hidden_units = 60
+num_hidden_units = 30
 num_hidden_layers = 4
 path_data = PATH_PREPROCESSED + 'data_merged_with_nans.csv'
 
@@ -62,7 +62,7 @@ def fill_gaps(model_name, path_data, path_gapfilled, path_model_saves, normaliza
     df_mlp = gap_filling_mlp(data=data, model=model, columns_data=COLS_FEATURES, columns_labels=COLS_LABELS, means=trainset_means, stds=trainset_stds)
 
     # merge
-    df = df_mlp[COLS_TIME + ["H_f_mlp", "LE_f_mlp"]].merge(df_f, how='outer', on=COLS_TIME)
+    df = df_mlp[COLS_TIME + [col.replace('orig', "") + 'f_mlp' for col in COLS_LABELS]].merge(df_f, how='outer', on=COLS_TIME)
 
     # reconstruct timestamp column
 
