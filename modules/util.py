@@ -324,3 +324,4 @@ def get_month_day_from_day_of_year(row):
     day_of_year = int(row['day_of_year'])
     date_obj = datetime.date(year, 1, 1) + datetime.timedelta(days=day_of_year - 1)
     return pd.Series([date_obj.month, date_obj.day])
+

@@ -8,14 +8,13 @@ import json
 import torch
 import torch.nn as nn   
 import torch.optim as optim
-from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 
 
 ############# UTILITIES ############
 
 from modules.util import grab_data, train_val_splitter, data_loaders, get_hash_from_features_and_labels
-from modules.MLPstuff import run_training, MLP, test
+from modules.MLPstuff import run_training, MLP, test, MyReduceLROnPlateau
 from columns import COLS_FEATURES_ALL, COLS_LABELS_ALL, COLS_KEY, COLS_KEY_ALT
 from paths import PATH_MODEL_TRAINING, PATH_MODEL_SAVES_MLP, PATH_PLOTS
 
@@ -23,7 +22,7 @@ from paths import PATH_MODEL_TRAINING, PATH_MODEL_SAVES_MLP, PATH_PLOTS
 
 # SPECIFY THESE
 cols_key = COLS_KEY # must be COLS_KEY or COLS_KEY_ALT
-cols_features = cols_key + ["incomingShortwaveRadiation", "soilHeatflux", "waterPressureDeficit", "windSpeed"] 
+cols_features = cols_key + ["incomingShortwaveRadiation"]
 cols_labels = COLS_LABELS_ALL
 normalization = True 
 who_trained = 'JM' # author
@@ -73,17 +72,6 @@ def train_mlp(GPU, num_epochs, lr,
     print("\n")
     print(f"Features used: {len(cols_features)} ({cols_features}) \n")
     print(f"Labels used: {len(cols_labels)} ({cols_labels}) \n")
-    # save features and labels
-    features_json = path_model_saves + 'features/' + model_name + '.json'
-    labels_json = path_model_saves + 'labels/' + model_name + '.json'
-    with open(features_json, 'w') as file:
-        json.dump(cols_features, file)
-    with open(labels_json, 'w') as file:
-        json.dump(cols_labels, file)
-
-    print(f"Saved list of features to {features_json} \n")
-
-    print(f"Saved list of labels to {labels_json} \n")
 
     
 
@@ -128,34 +116,23 @@ def train_mlp(GPU, num_epochs, lr,
                                                       num_cpus=num_cpus, batch_size=batch_size)
 
 
-    if normalization:
-        # save statistics
-        model_means_path = path_model_saves + 'statistics/' + model_name + '_means.npy'
-        model_stds_path = path_model_saves + 'statistics/'  + model_name + '_stds.npy'
-        np.save(model_means_path, trainset.dataset.means.numpy())
-        np.save(model_stds_path, trainset.dataset.stds.numpy())
-        print(f"Saved means to {model_means_path} \n")
-        print(f"Saved stds to {model_stds_path} \n")
+
+    # print("Test run with small learning rate for single epoch ... \n")
+
+    # model = MLP(len(cols_features), len(cols_labels), num_hidden_units=num_hidden_units, num_hidden_layers=num_hidden_layers).to(device)
+    # print("Model architecture: \n")
+    # print(model.eval())
+    # # Set loss function and optimizer
+    # criterion = nn.MSELoss()
+    # optimizer = optim.Adam(model.parameters(), lr=1e-5)
 
 
+    # train_losses, val_losses = run_training(model=model, optimizer=optimizer, num_epochs=1,
+    #                                          train_dataloader=trainloader, val_dataloader=valloader,
+    #                                          device=device, loss_fn=criterion, patience=5, early_stopper=False, verbose=False, plot_results=False)
 
-
-    print("Test run with small learning rate for single epoch ... \n")
-
-    model = MLP(len(cols_features), len(cols_labels), num_hidden_units=num_hidden_units, num_hidden_layers=num_hidden_layers).to(device)
-    print("Model architecture: \n")
-    print(model.eval())
-    # Set loss function and optimizer
-    criterion = nn.MSELoss()
-    optimizer = optim.Adam(model.parameters(), lr=1e-5)
-
-
-    train_losses, val_losses = run_training(model=model, optimizer=optimizer, num_epochs=1,
-                                             train_dataloader=trainloader, val_dataloader=valloader,
-                                             device=device, loss_fn=criterion, patience=5, early_stopper=False, verbose=False, plot_results=False)
-
-    print(f"Initial train loss: {train_losses} \n")
-    print(f"Initial val loss: {val_losses} \n")
+    # print(f"Initial train loss: {train_losses} \n")
+    # print(f"Initial val loss: {val_losses} \n")
 
 
 
@@ -171,21 +148,43 @@ def train_mlp(GPU, num_epochs, lr,
     # Set loss function and optimizer
     criterion = nn.MSELoss()
     optimizer = optim.Adam(model.parameters(), lr=lr)
-    scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.9, patience=5,
+    scheduler = MyReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=5,
                                 threshold=0.0001, threshold_mode='rel', cooldown=0, min_lr=1e-5)
 
 
 
     train_losses, val_losses = run_training(model=model, optimizer=optimizer, num_epochs=num_epochs, 
-                                            train_dataloader=trainloader, val_dataloader=valloader, device=device, loss_fn=criterion, patience=10, 
+                                            train_dataloader=trainloader, val_dataloader=valloader, device=device, loss_fn=criterion, patience=5, 
                                             early_stopper=True, scheduler=scheduler, verbose=True, plot_results=True,
-                                            save_plots_path=path_plots + 'loss/' + model_name + '_loss' + '.png')
+                                            save_plots_path=path_plots + 'loss/' + model_name + '.png')
 
 
     # Save the model
     model_save_path = path_model_saves + model_name + '.pth'
     torch.save(model.state_dict(), model_save_path )
     print(f"Saved model to {model_save_path} \n")
+
+    # save features and labels
+    features_json = path_model_saves + 'features/' + model_name + '.json'
+    labels_json = path_model_saves + 'labels/' + model_name + '.json'
+    with open(features_json, 'w') as file:
+        json.dump(cols_features, file)
+    with open(labels_json, 'w') as file:
+        json.dump(cols_labels, file)
+
+    print(f"Saved list of features to {features_json} \n")
+
+    print(f"Saved list of labels to {labels_json} \n")
+
+
+    if normalization:
+        # save statistics
+        model_means_path = path_model_saves + 'statistics/' + model_name + '_means.npy'
+        model_stds_path = path_model_saves + 'statistics/'  + model_name + '_stds.npy'
+        np.save(model_means_path, trainset.dataset.means.numpy())
+        np.save(model_stds_path, trainset.dataset.stds.numpy())
+        print(f"Saved means to {model_means_path} \n")
+        print(f"Saved stds to {model_stds_path} \n")
 
 
     test_loss = test(dataloader=testloader, model=model, device=device)
