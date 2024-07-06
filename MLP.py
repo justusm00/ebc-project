@@ -16,19 +16,20 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 from modules.util import grab_data, train_val_splitter, data_loaders, get_hash_from_features_and_labels
 from modules.MLPstuff import run_training, MLP, test
-from columns import COLS_FEATURES_ALL, COLS_LABELS_ALL, COLS_KEY
+from columns import COLS_FEATURES_ALL, COLS_LABELS_ALL, COLS_KEY, COLS_KEY_ALT
 from paths import PATH_MODEL_TRAINING, PATH_MODEL_SAVES_MLP, PATH_PLOTS
 
 
 
 # SPECIFY THESE
-cols_features = COLS_KEY + ["incomingShortwaveRadiation", "soilHeatflux", "waterPressureDeficit", "windSpeed"] 
+cols_key = COLS_KEY # must be COLS_KEY or COLS_KEY_ALT
+cols_features = cols_key + ["incomingShortwaveRadiation", "soilHeatflux", "waterPressureDeficit", "windSpeed"] 
 cols_labels = COLS_LABELS_ALL
 normalization = True 
 who_trained = 'JM' # author
 GPU = False
-num_epochs = 2
-lr = 10**(-2)
+num_epochs = 100
+lr = 10**(-3)
 num_hidden_units = 30
 num_hidden_layers = 4
 batch_size = 10
@@ -37,7 +38,7 @@ batch_size = 10
 
 
 def train_mlp(GPU, num_epochs, lr,
-              path_model_saves, batch_size, path_plots, cols_features=COLS_FEATURES_ALL, cols_labels=COLS_LABELS_ALL, normalization=True):
+              path_model_saves, batch_size, path_plots, cols_key, cols_features=COLS_FEATURES_ALL, cols_labels=COLS_LABELS_ALL, normalization=True):
     """Train MLP.
 
     Args:
@@ -56,9 +57,9 @@ def train_mlp(GPU, num_epochs, lr,
         _type_: _description_
     """
     # check if time columns are present as features
-    for col in COLS_KEY:
+    for col in cols_key:
         if col not in cols_features:
-            raise ValueError(f"Features must contain all of {COLS_KEY}")
+            raise ValueError(f"Features must contain all of {cols_key}")
         
     # Create a hash based on the features and labels
     model_hash = get_hash_from_features_and_labels(cols_features=cols_features, cols_labels=cols_labels)
@@ -195,5 +196,5 @@ def train_mlp(GPU, num_epochs, lr,
 if __name__ == '__main__':
     train_mlp(GPU=GPU, num_epochs=num_epochs, lr=lr,
               path_model_saves=PATH_MODEL_SAVES_MLP, batch_size=batch_size,
-              path_plots=PATH_PLOTS, cols_features=cols_features,
+              path_plots=PATH_PLOTS, cols_key=cols_key, cols_features=cols_features,
               cols_labels=cols_labels, normalization=normalization)

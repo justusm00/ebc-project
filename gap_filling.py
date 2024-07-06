@@ -13,7 +13,7 @@ from modules.MLPstuff import MLP
 
 
 # SPECIFY THESE
-filename_mlp = 'mlp_30_4_JM_norm_01b3187c62d1a0ed0d00b5736092b0d1.pth'
+filename_mlp = 'mlp_30_4_JM_norm_ae6a618e4da83a56de13c7eec7152215.pth'
 filename_rf = 'RandomForest_model_ae6a618e4da83a56de13c7eec7152215.pkl'
 
 path_data = PATH_PREPROCESSED + 'data_merged_with_nans.csv'

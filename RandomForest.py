@@ -20,7 +20,7 @@ cols_labels = COLS_LABELS_ALL
 
 
 
-def fit_rf(cols_features, cols_labels, path_model_saves):
+def fit_rf(cols_key, cols_features, cols_labels, path_model_saves):
     # Create a hash based on the features and labels
     model_hash = get_hash_from_features_and_labels(cols_features=cols_features, cols_labels=cols_labels)
 
@@ -68,4 +68,4 @@ def fit_rf(cols_features, cols_labels, path_model_saves):
 
 
 if __name__ == '__main__':
-    fit_rf(cols_features=cols_features, cols_labels=cols_labels, path_model_saves=PATH_MODEL_SAVES_RF)
+    fit_rf(cols_key=cols_key, cols_features=cols_features, cols_labels=cols_labels, path_model_saves=PATH_MODEL_SAVES_RF)
