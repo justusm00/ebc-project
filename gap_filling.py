@@ -13,7 +13,7 @@ from modules.MLPstuff import MLP
 
 
 # SPECIFY THESE
-filename_mlp = 'mlp_30_4_JM_norm_01b3187c62d1a0ed0d00b5736092b0d1.pth'
+filename_mlp = 'mlp_60_4_JM_minmax_01b3187c62d1a0ed0d00b5736092b0d1.pth'
 filename_rf = 'RandomForest_model_ae6a618e4da83a56de13c7eec7152215.pkl'
 
 path_data = PATH_PREPROCESSED + 'data_merged_with_nans.csv'
@@ -35,8 +35,15 @@ def fill_gaps(path_data, filename_mlp, filename_rf):
     num_hidden_units = int(parts[1])
     num_hidden_layers = int(parts[2])
     normalization = 'norm' in parts
+    minmax_scaling = 'minmax' in parts
+    if (minmax_scaling is True ) and (normalization is True ) :
+        raise ValueError("Can only perform normalization OR minmax_scaling")
     path_mlp = PATH_MODEL_SAVES_MLP + filename_mlp
     path_rf = PATH_MODEL_SAVES_RF + filename_rf
+    trainset_means = None
+    trainset_stds = None
+    trainset_mins = None
+    trainset_maxs = None
 
 
     mlp_name = filename_mlp.rstrip('.pth')
@@ -88,11 +95,19 @@ def fill_gaps(path_data, filename_mlp, filename_rf):
 
     # load statistics
     if normalization:
-        # save statistics
+        # load statistics
         model_means_path = PATH_MODEL_SAVES_MLP + 'statistics/' + mlp_name + '_means.npy'
         model_stds_path = PATH_MODEL_SAVES_MLP + 'statistics/' + mlp_name + '_stds.npy'
         trainset_means = np.load(model_means_path)
         trainset_stds = np.load(model_stds_path)
+
+
+    if minmax_scaling:
+        model_maxs_path = PATH_MODEL_SAVES_MLP + 'statistics/' + mlp_name + '_maxs.npy'
+        model_mins_path = PATH_MODEL_SAVES_MLP + 'statistics/' + mlp_name + '_mins.npy'
+        trainset_maxs = np.load(model_maxs_path)
+        trainset_mins = np.load(model_mins_path)
+
 
     # load random forest model
     with open(path_rf, 'rb') as f:
@@ -105,7 +120,8 @@ def fill_gaps(path_data, filename_mlp, filename_rf):
 
     # get both gapfilled dataframes
     df_mlp = gap_filling_mlp(data=data, mlp=mlp, columns_key=cols_key_mlp, columns_data=cols_features_mlp,
-                             columns_labels=cols_labels_mlp, means=trainset_means, stds=trainset_stds)
+                             columns_labels=cols_labels_mlp, means=trainset_means, stds=trainset_stds,
+                             mins=trainset_mins, maxs=trainset_maxs)
 
     df_rf = gap_filling_rf(data=data, model=rf, columns_key=cols_key_rf, columns_data=cols_features_rf, columns_labels=cols_labels_rf)
 
