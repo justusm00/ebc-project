@@ -35,9 +35,9 @@ df_meteo_goew = compute_soil_heatflux(df_meteo_goew)
 
 def plot_diurnal_cycles_soil(df):
     df_agg = df.groupby("time").agg(G=("soilHeatflux", "mean"), moisture=("soilMoisture_1_5cm", "mean"), k=("thermalConductivity_5cm_mean", "mean"), dTdz = ("dTdz_mean", "mean"), T1_15cm = ("soilTemperature_1_15cm", "mean")).reset_index()
-    plt.plot(df_agg["time"], df_agg["k"])
+    plt.plot(df_agg["time"], df_agg["G"])
     plt.xticks(df_agg["time"].unique()[::2], rotation = 90)
-    plt.ylabel("$k$")
+    plt.ylabel("$G$")
     plt.tight_layout()
     plt.show()
     return df_agg
