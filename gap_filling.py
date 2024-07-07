@@ -6,10 +6,10 @@ import json
 import pickle
 
 
-from modules.util import gap_filling_mlp, gap_filling_rf, get_month_day_from_day_of_year
+from modules.util import gap_filling_mlp, gap_filling_rf, get_month_day_from_day_of_year, compute_test_loss_mlp, compute_test_loss_rf
 from columns import COLS_KEY, COLS_KEY_ALT
-from paths import PATH_PREPROCESSED, PATH_GAPFILLED, PATH_MODEL_SAVES_MLP, PATH_MODEL_SAVES_RF
-from modules.MLPstuff import MLP
+from paths import PATH_PREPROCESSED, PATH_GAPFILLED, PATH_MODEL_SAVES_MLP, PATH_MODEL_SAVES_RF, PATH_MODEL_TRAINING
+from modules.MLPstuff import MLP, test
 
 
 # SPECIFY THESE
@@ -27,8 +27,6 @@ def fill_gaps(path_data, filename_mlp, filename_rf):
         filename_mlp (str): name of file containing MLP parameters
         filename_rf (str): name of file containing RF parameters
     """
-
-    ###### MLP
 
     # extract number of hidden units, hidden layers, whether normalization was used, who trained the mlp
     parts = filename_mlp.split('_')
@@ -112,6 +110,14 @@ def fill_gaps(path_data, filename_mlp, filename_rf):
     # load random forest model
     with open(path_rf, 'rb') as f:
         rf = pickle.load(f)
+
+
+    # print losses of models
+    loss_test_mlp = compute_test_loss_mlp(mlp, cols_features_mlp, cols_labels_mlp, normalization, minmax_scaling)
+    loss_test_rf = compute_test_loss_rf(rf, cols_features_rf, cols_labels_rf)
+
+    print(f"Test MSE for RF: {loss_test_rf:.2f}, Test MSE for MLP: {loss_test_mlp:.2f}")
+
 
 
     # load data
