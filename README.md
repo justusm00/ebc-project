@@ -42,10 +42,11 @@ In MLP.py, you need to specify:
 - features
 - labels
 - normalization T/F
+- minmax_scaling T/F
 - your initials
 - further training / architecture params
 
-When running the script, the model name is automatically created. The features and and labels are saved under model_saves/mlp/features and model_saves/mlp/labels, so that they can later be loaded for the gap filling. For each unique configuration of features/labels, a hash is created and added to the model name. This way, it is possible to easily train the same model architecture with different features / labels and use it directly for prediction without having to redefine anything in columns.py. If normalization is set to True, the trainset statistics (mean and standard deviation) are saved to model_saves/mlp/statistics. It is important that the trainset statistics are used also to normalize the testset or new, unlabeled data.
+When running the script, the model name is automatically created. The features and and labels are saved under model_saves/mlp/features and model_saves/mlp/labels, so that they can later be loaded for the gap filling. For each unique configuration of features/labels, a hash is created and added to the model name. This way, it is possible to easily train the same model architecture with different features / labels and use it directly for prediction without having to redefine anything in columns.py. If normalization is set to True, the trainset statistics (mean and standard deviation) are saved to model_saves/mlp/statistics. It is important that the trainset statistics are used also to normalize the testset or new, unlabeled data. Similarly, minmax_scaling can be used instead of normalization. If both normalization and minmax_scaling are set to True, an error is raised since it does not make sense to use both.
 
 TODO: find a way around hardcoding the params
 

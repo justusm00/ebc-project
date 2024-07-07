@@ -63,14 +63,21 @@ def numerical_to_float(df, cols):
 
 # Define Dataset
 class EBCDataset(Dataset):
-    def __init__(self, data, labels, normalization=False, means=None, stds=None):
+    def __init__(self, data, labels, normalization=False, minmax_scaling=False, means=None, stds=None, mins=None, maxs=None):
         if (normalization is True ) and ( means is None or stds is None) :
             raise ValueError("Must specify mean and standard for normalization.")
+        if (minmax_scaling is True ) and ( mins is None or maxs is None) :
+            raise ValueError("Must specify min and max for min_max_scaling.")
+        if (minmax_scaling is True ) and (normalization is True ) :
+            raise ValueError("Can only perform normalization OR minmax_scaling")
         self.data = data
         self.labels = labels
         self.normalization = normalization
+        self.minmax_scaling = minmax_scaling
         self.means = means
         self.stds = stds
+        self.mins = mins
+        self.maxs = maxs
 
     def __len__(self):
         return len(self.data)
@@ -80,12 +87,14 @@ class EBCDataset(Dataset):
         label = self.labels[idx]
         if self.normalization:
             sample = (sample - self.means) / self.stds 
+        if self.minmax_scaling:
+            sample = (sample - self.mins) / (self.maxs - self.mins)
         return sample, label
 
 
 
 # Data loader
-def grab_data(path_train, path_test, num_cpus, columns_data=None, columns_labels=None, normalization=False):
+def grab_data(path_train, path_test, num_cpus, columns_data=None, columns_labels=None, normalization=False, minmax_scaling=False):
     """Loads training and test data from respective directories. 
 
     Args:
@@ -95,10 +104,14 @@ def grab_data(path_train, path_test, num_cpus, columns_data=None, columns_labels
         columns_data (_type_, optional): _description_. Defaults to None.
         columns_labels (_type_, optional): _description_. Defaults to None.
         normalization (bool, optional): If True, normalize data based on trainset statistics.
+        minmax_scaling (bool, optional): If True, perform minmax scaling
+
 
     Returns:
         _type_: _description_
     """
+    if (minmax_scaling is True ) and (normalization is True ) :
+        raise ValueError("Can only perform normalization OR minmax_scaling")
 
     # load data
     trainset = pd.read_csv(path_train)
@@ -132,6 +145,20 @@ def grab_data(path_train, path_test, num_cpus, columns_data=None, columns_labels
         # load again, now normalized
         trainset = EBCDataset(trainset_data, trainset_labels, normalization=True, means=trainset_mean, stds=trainset_std)
         testset = EBCDataset(testset_data, testset_labels, normalization=True, means=trainset_mean, stds=trainset_std)
+
+    if minmax_scaling: # normalize to [-1,1]
+        num_samples = trainset.data.shape[0]
+        trainloader = torch.utils.data.DataLoader(trainset, batch_size=num_samples, 
+                                                    num_workers=num_cpus)
+        
+        # compute column means and stds
+        rows, _ = next(iter(trainloader))
+        trainset_min, _ = torch.min(rows, dim=(0)) 
+        trainset_max, _ = torch.max(rows, dim=(0))
+
+        # load again, now normalized
+        trainset = EBCDataset(trainset_data, trainset_labels, minmax_scaling=True, mins=trainset_min, maxs=trainset_max)
+        testset = EBCDataset(testset_data, testset_labels, minmax_scaling=True, mins=trainset_min, maxs=trainset_max)
         
 
     return trainset, testset
@@ -192,7 +219,9 @@ def data_loaders(trainset, valset, testset, batch_size=64, num_cpus=1):
 
 
 
-def gap_filling_mlp(data, mlp, columns_key, columns_data, columns_labels, means=None, stds=None):
+
+
+def gap_filling_mlp(data, mlp, columns_key, columns_data, columns_labels, means=None, stds=None, mins=None, maxs=None):
     """Fill gaps using pretrained model.
 
     Args:
@@ -210,6 +239,11 @@ def gap_filling_mlp(data, mlp, columns_key, columns_data, columns_labels, means=
 
     if ((means is None) and (stds is not None)) or ((stds is None) and (means is not None)) :
         raise ValueError("Must specify either means and stds or none of them.")
+    if ((means is None) and (stds is not None)) or ((stds is None) and (means is not None)) :
+        raise ValueError("Must specify either mins and maxs or none of them.")
+    if ((means is not None) and (maxs is not None)) or ((means is not None) and (mins is not None)) :
+        raise ValueError("If means and stds are specified, mins and maxs must be None and vice versa")
+    
     # identify rows where labels are NaN, but features aren't
     mask_nan = data[columns_labels].isna().any(axis=1)
     mask_not_nan = data[columns_data].notna().all(axis=1)
@@ -228,6 +262,12 @@ def gap_filling_mlp(data, mlp, columns_key, columns_data, columns_labels, means=
         means = torch.tensor(means)
         stds = torch.tensor(stds)
         input_tensor = (input_tensor - means) / stds
+
+    # minmax scaling
+    if mins is not None and maxs is not None:
+        mins = torch.tensor(mins)
+        maxs = torch.tensor(maxs)
+        input_tensor = (input_tensor - mins) / (maxs - mins)
 
     with torch.no_grad():
         pred = mlp(input_tensor).numpy() #  Transform back to numpy 
@@ -324,3 +364,4 @@ def get_month_day_from_day_of_year(row):
     day_of_year = int(row['day_of_year'])
     date_obj = datetime.date(year, 1, 1) + datetime.timedelta(days=day_of_year - 1)
     return pd.Series([date_obj.month, date_obj.day])
+

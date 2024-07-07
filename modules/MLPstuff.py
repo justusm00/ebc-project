@@ -11,6 +11,8 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
+from torch.optim.lr_scheduler import ReduceLROnPlateau
+
 import fastprogress
 
 # MLP definition
@@ -104,6 +106,7 @@ class EarlyStopper:
             self.counter += 1
         else:
             self.counter = 0
+
         
         return
     
@@ -113,9 +116,30 @@ class EarlyStopper:
 
 
 
+# Subclass ReduceLROnPlateau to customize behavior
+class MyReduceLROnPlateau(ReduceLROnPlateau):
+    def __init__(self, *args, **kwargs):
+        super(MyReduceLROnPlateau, self).__init__(*args, **kwargs)
+
+    def step(self, metrics, epoch=None):
+        last_lr = self.optimizer.param_groups[0]['lr']
+        super(MyReduceLROnPlateau, self).step(metrics, epoch)
+        new_lr = self.optimizer.param_groups[0]['lr']
+        if new_lr != last_lr:
+            print(f'Learning rate reduced from {last_lr:.6f} to {new_lr:.6f}')
 
 
 
+# Function to create a sub-dataloader that only iterates over the first batch
+class SingleBatchDataLoader:
+    def __init__(self, dataloader):
+        self.batch = next(iter(dataloader))
+        
+    def __iter__(self):
+        return iter([self.batch])
+    
+    def __len__(self):
+        return 1
         
 
 ############# TRAINING FUNCTIONS ###############
@@ -292,8 +316,8 @@ def run_training(model, optimizer, num_epochs, train_dataloader, val_dataloader,
     if early_stopper:
         ES = EarlyStopper(verbose=verbose, patience = patience)
 
-    # initialize old loss value varibale
-    val_loss_old = 0
+    # initialize old loss value varibale (choose something very large)
+    val_loss_old = 1e6
 
     for epoch in master_bar:
         # Train the model
@@ -309,15 +333,18 @@ def run_training(model, optimizer, num_epochs, train_dataloader, val_dataloader,
         if verbose:
             master_bar.write(f'Train loss: {epoch_train_loss:.2f}, val loss: {epoch_val_loss:.2f}')
 
+
         if early_stopper and epoch != 0:
-            
             ES.check_criterion(epoch_val_loss, val_loss_old)
             if ES.early_stop:
-                print("Early stopping")
+                master_bar.write("Early stopping")
                 model = ES.load_checkpoint()
                 break
-        # Save biggest
-        if early_stopper and epoch_val_loss > val_loss_old:
+            if ES.counter > 0:
+                master_bar.write(f"Early stop counter: {ES.counter} / {patience}")
+
+        # Save smallest loss
+        if early_stopper and epoch_val_loss < val_loss_old:
             val_loss_old = epoch_val_loss
             ES.save_model(model)
             
@@ -329,8 +356,10 @@ def run_training(model, optimizer, num_epochs, train_dataloader, val_dataloader,
 
     if plot_results:
         plot("Loss", "Loss", train_losses, val_losses, save_path=save_plots_path)
-
     return train_losses, val_losses
+
+
+
 
 
 
