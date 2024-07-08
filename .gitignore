@@ -183,4 +183,10 @@ checkpoint.pt
 
 # other
 *.npy
+!model_saves/mlp/statistics/*.npy
 *.json
+!model_saves/mlp/features/*.json
+!model_saves/mlp/labels/*.json
+!model_saves/rf/features/*.json
+!model_saves/rf/labels/*.json
+
