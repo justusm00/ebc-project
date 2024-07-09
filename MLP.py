@@ -59,7 +59,7 @@ def train_mlp(GPU, num_epochs, lr,
     """
     if (minmax_scaling is True ) and (normalization is True ) :
         raise ValueError("Can only perform normalization OR minmax_scaling")
-    # check if time columns are present as features
+    # check if key columns are present as features
     for col in cols_key:
         if col not in cols_features:
             raise ValueError(f"Features must contain all of {cols_key}")
