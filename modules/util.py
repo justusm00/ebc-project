@@ -8,7 +8,7 @@ from sklearn.metrics import mean_squared_error
 from modules.MLPstuff import test
 import datetime
 import hashlib
-from paths import PATH_MODEL_TRAINING
+from modules.paths import PATH_MODEL_TRAINING
 
 
 

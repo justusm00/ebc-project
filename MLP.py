@@ -14,8 +14,8 @@ import torch.optim as optim
 
 from modules.util import grab_data, train_val_splitter, data_loaders, get_hash_from_features_and_labels
 from modules.MLPstuff import run_training, MLP, test, MyReduceLROnPlateau, SingleBatchDataLoader
-from columns import COLS_FEATURES_ALL, COLS_LABELS_ALL, COLS_KEY, COLS_KEY_ALT
-from paths import PATH_MODEL_TRAINING, PATH_MODEL_SAVES_MLP, PATH_PLOTS
+from modules.columns import COLS_FEATURES_ALL, COLS_LABELS_ALL, COLS_KEY, COLS_KEY_ALT
+from modules.paths import PATH_MODEL_TRAINING, PATH_MODEL_SAVES_MLP, PATH_PLOTS
 
 
 

@@ -2,13 +2,12 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_squared_error
 import numpy as np
 import pandas as pd
-import matplotlib as plt
 import pickle
 import json
 
 
-from columns import COLS_LABELS_ALL, COLS_KEY, COLS_KEY_ALT
-from paths import PATH_MODEL_TRAINING, PATH_MODEL_SAVES_RF
+from modules.columns import COLS_LABELS_ALL, COLS_KEY, COLS_KEY_ALT
+from modules.paths import PATH_MODEL_TRAINING, PATH_MODEL_SAVES_RF
 from modules.util import get_hash_from_features_and_labels
 
 

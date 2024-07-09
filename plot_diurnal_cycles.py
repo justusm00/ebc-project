@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from paths import PATH_GAPFILLED, PATH_PLOTS
+from modules.paths import PATH_GAPFILLED, PATH_PLOTS
 
 
 def plot_diurnal_cycles(path_gapfilled, path_plots):
@@ -88,14 +88,9 @@ def plot_diurnal_cycles(path_gapfilled, path_plots):
     plt.savefig(PATH_PLOTS + 'diurnal_cycles/energy_balances_closure.png')
     # plt.show()
 
+    print(f"Saved figures to {PATH_PLOTS + 'diurnal_cycles/'}")
+
             
-
-
-
-
-
-
-
 
 
 if __name__ == '__main__':
