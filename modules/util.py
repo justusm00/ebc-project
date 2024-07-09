@@ -1,11 +1,11 @@
 import numpy as np
 import pandas as pd
 import torch
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset
 from sklearn.metrics import mean_squared_error
 
 
-from modules.MLPstuff import MLP, test
+from modules.MLPstuff import test
 import datetime
 import hashlib
 from paths import PATH_MODEL_TRAINING

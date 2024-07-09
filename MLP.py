@@ -1,7 +1,6 @@
 # important  imports
 import os
 import numpy as np
-import hashlib
 import json
 
 

@@ -8,8 +8,8 @@ import pickle
 
 from modules.util import gap_filling_mlp, gap_filling_rf, get_month_day_from_day_of_year, compute_test_loss_mlp, compute_test_loss_rf
 from columns import COLS_KEY, COLS_KEY_ALT
-from paths import PATH_PREPROCESSED, PATH_GAPFILLED, PATH_MODEL_SAVES_MLP, PATH_MODEL_SAVES_RF, PATH_MODEL_TRAINING
-from modules.MLPstuff import MLP, test
+from paths import PATH_PREPROCESSED, PATH_GAPFILLED, PATH_MODEL_SAVES_MLP, PATH_MODEL_SAVES_RF
+from modules.MLPstuff import MLP
 
 
 # SPECIFY THESE

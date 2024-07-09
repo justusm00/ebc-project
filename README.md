@@ -27,7 +27,11 @@
 - If we can't get to 15 minutes in our presentation :D 
 
 
-# Code workflow for gap filling
+# Workflow for gap filling
+
+## Install required python libraries
+
+Run pip install -r requirements.txt
 
 ## Preprocessing
 
