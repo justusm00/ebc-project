@@ -199,12 +199,6 @@ def fill_gaps(path_data, filename_mlp, filename_rf, filename_mlpsw=None, diurnal
 
     # Fill the remaining gaps as good as possible with the shortwave mlp
     if filename_mlpsw:
-        # Find the rows where NaNs remain
-        idxs_remaining_mlp = df[ df[['H_f_mlp', 'LE_f_mlp']].isna().any(axis=1) ].index
-        # Find the rows where no shortwave radiation data is present
-        idxs_without_SW = df[ df[['incomingShortwaveRadiation']].isna() ].index
-        # Remove those without SW since they can't be predicted using the MLPSW
-        idxs_to_be_predicted_mlp = idxs_remaining_mlp.difference( idxs_without_SW )
 
         df = gap_filling_mlp(data=df, mlp=mlpsw, columns_key=COLS_KEY, columns_data=cols_features_mlpsw,
                                    columns_labels=['H_f_mlp', 'LE_f_mlp'], means=trainset_means_mlpsw, stds=trainset_stds_mlpsw,
