@@ -15,6 +15,7 @@ from modules.MLPstuff import MLP
 # SPECIFY THESE
 filename_mlp = 'mlp_60_4_JM_minmax_01b3187c62d1a0ed0d00b5736092b0d1.pth'
 filename_rf = 'RandomForest_model_ae6a618e4da83a56de13c7eec7152215.pkl'
+filename_mlpsw = 'mlp_60_4_RD1_minmax_d2b43b2dba972e863e8a9a0deeaebbda.pth'
 
 path_data = PATH_PREPROCESSED + 'data_merged_with_nans.csv'
 
@@ -67,9 +68,9 @@ def fill_gaps(path_data, filename_mlp, filename_rf, filename_mlpsw=None, diurnal
 
     # Load MLPSW features and labels
     if filename_mlpsw:
-        with open(PATH_MODEL_SAVES_MLP + 'features/' + mlp_name + '.json', 'r') as file:
+        with open(PATH_MODEL_SAVES_MLP + 'features/' + mlpsw_name + '.json', 'r') as file:
             cols_features_mlpsw = json.load(file)
-        with open(PATH_MODEL_SAVES_MLP + 'labels/' + mlp_name + '.json', 'r') as file:
+        with open(PATH_MODEL_SAVES_MLP + 'labels/' + mlpsw_name + '.json', 'r') as file:
             cols_labels_mlpsw = json.load(file)
 
 
@@ -126,24 +127,37 @@ def fill_gaps(path_data, filename_mlp, filename_rf, filename_mlpsw=None, diurnal
 
     # Load MLPSW
     if filename_mlpsw:
-        mlpsw = MLP(len(cols_features_mlpsw), len(cols_labels_mlpsw), num_hidden_units=num_hidden_units, num_hidden_layers=num_hidden_layers)
+        parts_mlpsw = filename_mlpsw.split('_')
+        num_hidden_units_mlpsw = int(parts_mlpsw[1])
+        num_hidden_layers_mlpsw = int(parts_mlpsw[2])
+        normalization_mlpsw = 'norm' in parts_mlpsw
+        minmax_scaling_mlpsw = 'minmax' in parts_mlpsw
+        if (minmax_scaling_mlpsw is True ) and (normalization_mlpsw is True ) :
+            raise ValueError("Can only perform normalization OR minmax_scaling")
+        
+        mlpsw = MLP(len(cols_features_mlpsw), len(cols_labels_mlpsw), num_hidden_units=num_hidden_units_mlpsw, num_hidden_layers=num_hidden_layers_mlpsw)
         mlpsw.load_state_dict(torch.load(path_mlpsw))
+
+        trainset_means_mlpsw = None
+        trainset_stds_mlpsw = None
+        trainset_mins_mlpsw = None
+        trainset_maxs_mlpsw = None
 
 
         # load statistics
-        if normalization:
+        if normalization_mlpsw:
             # load statistics
             model_means_path_mlpsw = PATH_MODEL_SAVES_MLP + 'statistics/' + mlpsw_name + '_means.npy'
             model_stds_path_mlpsw = PATH_MODEL_SAVES_MLP + 'statistics/' + mlpsw_name + '_stds.npy'
-            trainset_means_mlpsw = np.load(model_means_path)
-            trainset_stds_mlpsw = np.load(model_stds_path)
+            trainset_means_mlpsw = np.load(model_means_path_mlpsw)
+            trainset_stds_mlpsw = np.load(model_stds_path_mlpsw)
 
 
-        if minmax_scaling:
+        if minmax_scaling_mlpsw:
             model_maxs_path_mlpsw = PATH_MODEL_SAVES_MLP + 'statistics/' + mlpsw_name + '_maxs.npy'
             model_mins_path_mlpsw = PATH_MODEL_SAVES_MLP + 'statistics/' + mlpsw_name + '_mins.npy'
-            trainset_maxs_mlpsw = np.load(model_maxs_path)
-            trainset_mins_mlpsw = np.load(model_mins_path)    
+            trainset_maxs_mlpsw = np.load(model_maxs_path_mlpsw)
+            trainset_mins_mlpsw = np.load(model_mins_path_mlpsw)    
 
 
     # print losses of models
@@ -182,6 +196,26 @@ def fill_gaps(path_data, filename_mlp, filename_rf, filename_mlpsw=None, diurnal
     # merge both
     df = df_mlp[COLS_KEY + [col.replace('_orig', '') + '_f_mlp' for col in cols_labels_mlp]].merge(df_rf, how="inner", on=COLS_KEY)
 
+
+    # Fill the remaining gaps as good as possible with the shortwave mlp
+    if filename_mlpsw:
+        # Find the rows where NaNs remain
+        idxs_remaining_mlp = df[ df[['H_f_mlp', 'LE_f_mlp']].isna().any(axis=1) ].index
+        # Find the rows where no shortwave radiation data is present
+        idxs_without_SW = df[ df[['incomingShortwaveRadiation']].isna() ].index
+        # Remove those without SW since they can't be predicted using the MLPSW
+        idxs_to_be_predicted_mlp = idxs_remaining_mlp.difference( idxs_without_SW )
+
+        df = gap_filling_mlp(data=df, mlp=mlpsw, columns_key=COLS_KEY, columns_data=cols_features_mlpsw,
+                                   columns_labels=['H_f_mlp', 'LE_f_mlp'], means=trainset_means_mlpsw, stds=trainset_stds_mlpsw,
+                                   mins=trainset_mins_mlpsw, maxs=trainset_maxs_mlpsw)
+        
+        # Now fill the dataframe
+        # df['H_f_mlp'].fillna( df_mlpsw['H_f_mlp'], inplace=True )
+        # df['LE_f_mlp'].fillna( df_mlpsw['LE_f_mlp'], inplace=True )
+        
+
+
     # Convert the '30min' column to a timedelta representing the minutes
     df['time'] = pd.to_timedelta(df['30min'] * 30, unit='m')
 
@@ -208,4 +242,4 @@ def fill_gaps(path_data, filename_mlp, filename_rf, filename_mlpsw=None, diurnal
 
 
 if __name__ == '__main__':
-    fill_gaps(path_data=path_data, filename_mlp=filename_mlp, filename_rf=filename_rf)
+    fill_gaps(path_data=path_data, filename_mlp=filename_mlp, filename_rf=filename_rf, filename_mlpsw=filename_mlpsw)

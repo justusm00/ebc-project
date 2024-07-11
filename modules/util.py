@@ -333,7 +333,10 @@ def gap_filling_mlp(data, mlp, columns_key, columns_data, columns_labels, means=
         pred = mlp(input_tensor).numpy() #  Transform back to numpy 
 
     # create dataframe of predictions 
-    columns_labels_pred = [col.replace('_orig', '') + '_f_mlp'  for col in columns_labels]
+    if columns_labels != ['H_f_mlp', 'LE_f_mlp']:
+        columns_labels_pred = [col.replace('_orig', '') + '_f_mlp'  for col in columns_labels]
+    else:
+        columns_labels_pred = ['H_f_mlp', 'LE_f_mlp']
     pred = pd.DataFrame(pred, columns=columns_labels_pred)
 
     
@@ -343,6 +346,7 @@ def gap_filling_mlp(data, mlp, columns_key, columns_data, columns_labels, means=
 
     # merge both dataframes
     data_merged = data.merge(data_pred[columns_key + columns_labels_pred], how="outer", on=columns_key)
+    print(data_merged.columns)
 
     # now, the gapfilled columns have nan values where the original data is not nan. In this case, just take the original values
     for col_f, col in zip(columns_labels_pred, columns_labels):
