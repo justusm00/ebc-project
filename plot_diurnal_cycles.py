@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from paths import PATH_GAPFILLED, PATH_PLOTS
+from modules.paths import PATH_GAPFILLED, PATH_PLOTS
 
 
 def plot_diurnal_cycles(path_gapfilled, path_plots):
@@ -41,67 +41,56 @@ def plot_diurnal_cycles(path_gapfilled, path_plots):
     df_gw = aggregate_data(df_gw)
     df_bg = aggregate_data(df_bg)
 
-    # plot bg data
-    fig, axs = plt.subplots(4, 2, figsize =(20, 8))
+    # # plot diurnal cycles
+    fig, axs = plt.subplots(4, 2, figsize =(20, 8), dpi=600)
 
     for ax in axs.flatten():
         ax.set_xticks([])  # Remove x-ticks
         ax.set_xticklabels([])
 
-    axs[0, 0].set_title("GW, original data")
-    axs[0, 0].plot(df_gw["time"], df_gw["Q"], label="Q")
-    axs[0, 0].plot(df_gw["time"], df_gw["LE_orig"] + df_gw["H_orig"] + df_gw["G"], label="H + LE + G")
-
-    axs[1, 0].set_title("GW, gapfilled data with MDS")
-    axs[1, 0].plot(df_gw["time"], df_gw["Q"], label="Q")
-    axs[1, 0].plot(df_gw["time"], df_gw["LE_f"] + df_gw["H_f"] + df_gw["G"], label="H + LE + G")
-
-
-    axs[2, 0].set_title("GW, gapfilled data with MLP")
-    axs[2, 0].plot(df_gw["time"], df_gw["Q"], label="Q")
-    axs[2, 0].plot(df_gw["time"], df_gw["LE_f_mlp"] + df_gw["H_f_mlp"] + df_gw["G"], label="H + LE + G")
+    fig.suptitle("Energy Balance Closure components")
+    axs[0, 0].set_title("Botanical Garden")
+    axs[0, 1].set_title("Göttingen Forest")
+    for i, df, location in zip([0, 1], [df_bg, df_gw], ["BG", "GW"]):
+        for j, col in enumerate(["Q", "H_orig", "LE_orig" ,"G"]):
+            axs[j, i].plot(df["time"], df[col], label=col)
+            if j == 3:
+                axs[3, i].set_xticks(df["time"][::2]) 
+                axs[3, i].set_xticklabels(df["time"][::2]) 
+                axs[3, i].tick_params(axis='x', rotation=45)
 
 
-    axs[3, 0].set_title("GW, gapfilled data with Random Forest")
-    axs[3, 0].plot(df_gw["time"], df_gw["Q"], label="Q")
-    axs[3, 0].plot(df_gw["time"], df_gw["LE_f_rf"] + df_gw["H_f_rf"] + df_gw["G"], label="H + LE + G")
-    axs[3, 0].set_xticks(df_gw["time"]) 
-    axs[3, 0].set_xticklabels(df_gw["time"]) 
-    axs[3, 0].tick_params(axis='x', rotation=90)
-
-
-    axs[0, 1].set_title("BG, original data")
-    axs[0, 1].plot(df_bg["time"], df_bg["Q"], label="Q")
-    axs[0, 1].plot(df_bg["time"], df_bg["LE_orig"] + df_bg["H_orig"] + df_bg["G"], label="H + LE + G")
-
-    axs[1, 1].set_title("BG, gapfilled data with MDS")
-    axs[1, 1].plot(df_bg["time"], df_bg["Q"], label="Q")
-    axs[1, 1].plot(df_bg["time"], df_bg["LE_f"] + df_bg["H_f"] + df_bg["G"], label="H + LE + G")
-
-
-    axs[2, 1].set_title("BG, gapfilled data with MLP")
-    axs[2, 1].plot(df_bg["time"], df_bg["Q"], label="Q")
-    axs[2, 1].plot(df_bg["time"], df_bg["LE_f_mlp"] + df_bg["H_f_mlp"] + df_bg["G"], label="H + LE + G")
-
-
-
-    axs[3, 1].set_title("BG, gapfilled data with Random Forest")
-    axs[3, 1].plot(df_bg["time"], df_bg["Q"], label="Q")
-    axs[3, 1].plot(df_bg["time"], df_bg["LE_f_rf"] + df_bg["H_f_rf"] + df_bg["G"], label="H + LE + G")
-    axs[3, 1].set_xticks(df_gw["time"]) 
-    axs[3, 1].set_xticklabels(df_gw["time"]) 
-    axs[3, 1].tick_params(axis='x', rotation=90)
 
     for ax in axs.flatten():
-        ax.set_ylabel("Energy in W/m^2")
+        ax.set_ylabel("Energy in $W/m^2$")
         ax.legend()
 
     plt.tight_layout()
     plt.savefig(PATH_PLOTS + 'diurnal_cycles/diurnal_cycles_comparison.png')
-    plt.show()
 
 
+    # plot energy gaps
+    plt.figure(figsize=(12, 4), dpi=600)
+    for df, location in zip([df_bg, df_gw], ["BG", "GW"]):
+        for alg, suffix in zip(['OG', 'MDS', 'MLP', 'RF'], ['_orig', '_f', '_f_mlp', '_f_rf']):
+            if alg == "OG":
+                label = location + ", Original Data"
+                linestyle = '-'
+            else:
+                label = location +", Gapfilled " + alg
+                linestyle = '--'
+            plt.plot(df["time"], df["Q"] - df["G"] - df["H" + suffix] - df["LE" + suffix], label=label, linestyle=linestyle)
+    plt.legend()
+    plt.xticks(df_bg["time"][::2], rotation=45)
+    plt.xlabel("Time")
+    plt.ylabel("EBC gap in $W/m^2$")
+    plt.tight_layout()
+    plt.savefig(PATH_PLOTS + 'diurnal_cycles/energy_balances_closure.png')
+    # plt.show()
 
+    print(f"Saved figures to {PATH_PLOTS + 'diurnal_cycles/'}")
+
+            
 
 
 if __name__ == '__main__':

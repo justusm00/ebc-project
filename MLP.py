@@ -1,7 +1,6 @@
 # important  imports
 import os
 import numpy as np
-import hashlib
 import json
 
 
@@ -15,8 +14,8 @@ import torch.optim as optim
 
 from modules.util import grab_data, train_val_splitter, data_loaders, get_hash_from_features_and_labels
 from modules.MLPstuff import run_training, MLP, test, MyReduceLROnPlateau, SingleBatchDataLoader
-from columns import COLS_FEATURES_ALL, COLS_LABELS_ALL, COLS_KEY, COLS_KEY_ALT
-from paths import PATH_MODEL_TRAINING, PATH_MODEL_SAVES_MLP, PATH_PLOTS
+from modules.columns import COLS_FEATURES_ALL, COLS_LABELS_ALL, COLS_KEY, COLS_KEY_ALT
+from modules.paths import PATH_MODEL_TRAINING, PATH_MODEL_SAVES_MLP, PATH_PLOTS
 
 
 
@@ -60,7 +59,7 @@ def train_mlp(GPU, num_epochs, lr,
     """
     if (minmax_scaling is True ) and (normalization is True ) :
         raise ValueError("Can only perform normalization OR minmax_scaling")
-    # check if time columns are present as features
+    # check if key columns are present as features
     for col in cols_key:
         if col not in cols_features:
             raise ValueError(f"Features must contain all of {cols_key}")

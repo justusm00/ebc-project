@@ -2,25 +2,39 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_squared_error
 import numpy as np
 import pandas as pd
-import matplotlib as plt
 import pickle
 import json
 
 
-from columns import COLS_LABELS_ALL, COLS_KEY, COLS_KEY_ALT
-from paths import PATH_MODEL_TRAINING, PATH_MODEL_SAVES_RF
+from modules.columns import COLS_LABELS_ALL, COLS_KEY, COLS_KEY_ALT
+from modules.paths import PATH_MODEL_TRAINING, PATH_MODEL_SAVES_RF
 from modules.util import get_hash_from_features_and_labels
 
 
 # ALWAYS SPECIFY THESE
 cols_key = COLS_KEY_ALT # must be COLS_KEY or COLS_KEY_ALT
-cols_features = cols_key + ["incomingShortwaveRadiation", "soilHeatflux", "waterPressureDeficit", "windSpeed"] 
+cols_features = cols_key + ["incomingShortwaveRadiation", "soilHeatflux"] 
 cols_labels = COLS_LABELS_ALL
 
 
 
 
 def fit_rf(cols_key, cols_features, cols_labels, path_model_saves):
+    """Fit random forest model, print train/test MSEs and save model.
+
+    Args:
+        cols_key (_type_): _description_
+        cols_features (_type_): _description_
+        cols_labels (_type_): _description_
+        path_model_saves (_type_): _description_
+
+    Raises:
+        ValueError: _description_
+    """
+    # check if key columns are present as features
+    for col in cols_key:
+        if col not in cols_features:
+            raise ValueError(f"Features must contain all of {cols_key}")
     # Create a hash based on the features and labels
     model_hash = get_hash_from_features_and_labels(cols_features=cols_features, cols_labels=cols_labels)
 
@@ -50,7 +64,8 @@ def fit_rf(cols_key, cols_features, cols_labels, path_model_saves):
 
 
 
-    Rfr = RandomForestRegressor(n_estimators=100, max_depth=40, min_samples_split=20, min_samples_leaf=10, random_state=42)
+    Rfr = RandomForestRegressor(n_estimators=100, max_depth=40, min_samples_split=20,
+                                 min_samples_leaf=10, random_state=42)
     Rfr.fit(X_train, y_train)
 
     y_pred_test = Rfr.predict(X_test)

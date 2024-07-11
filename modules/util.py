@@ -1,11 +1,14 @@
 import numpy as np
 import pandas as pd
-
 import torch
-from torch.utils.data import Dataset, DataLoader
-from modules.MLPstuff import MLP
+from torch.utils.data import Dataset
+from sklearn.metrics import mean_squared_error
+
+
+from modules.MLPstuff import test
 import datetime
 import hashlib
+from modules.paths import PATH_MODEL_TRAINING
 
 
 
@@ -217,6 +220,63 @@ def data_loaders(trainset, valset, testset, batch_size=64, num_cpus=1):
                                              num_workers=num_cpus, pin_memory=True)
     return trainloader, valloader, testloader
 
+
+
+
+def compute_test_loss_mlp(model, cols_features, cols_labels, normalization, minmax_scaling, num_cpus=1, device='cpu'):
+    """Compute loss of model on test set
+
+    Args:
+        model (_type_): _description_
+        cols_features (_type_): _description_
+        cols_labels (_type_): _description_
+        normalization (_type_): _description_
+        minmax_scaling (_type_): _description_
+        num_cpus (int, optional): _description_. Defaults to 1.
+        device (str, optional): _description_. Defaults to 'cpu'.
+
+    Raises:
+        ValueError: _description_
+    """
+    if (minmax_scaling is True ) and (normalization is True ) :
+        raise ValueError("Can only perform normalization OR minmax_scaling")
+     # compute and print test losss
+    _ , testset = grab_data(PATH_MODEL_TRAINING + 'training_data.csv', PATH_MODEL_TRAINING + 'test_data.csv',
+                                  num_cpus, cols_features, cols_labels, normalization=normalization, minmax_scaling=minmax_scaling)
+
+
+    testloader = torch.utils.data.DataLoader(testset,
+                                             batch_size=10,
+                                             shuffle=True, 
+                                             num_workers=1, pin_memory=True)
+    
+    loss = test(dataloader=testloader, model=model, device=device)
+    return loss
+
+
+
+def compute_test_loss_rf(model, cols_features, cols_labels):
+    """Compute loss of random forest on test set
+
+    Args:
+        model (_type_): _description_
+        cols_features (_type_): _description_
+        cols_labels (_type_): _description_
+        normalization (_type_): _description_
+        minmax_scaling (_type_): _description_
+        num_cpus (int, optional): _description_. Defaults to 1.
+        device (str, optional): _description_. Defaults to 'cpu'.
+
+    Raises:
+        ValueError: _description_
+    """
+
+    data = pd.read_csv(PATH_MODEL_TRAINING + 'test_data.csv')
+    X = data[cols_features]
+    y = data[cols_labels]
+    y_pred = model.predict(X)
+    loss = mean_squared_error(y, y_pred)
+    return loss
 
 
 

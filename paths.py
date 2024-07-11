@@ -1,7 +1,0 @@
-PATH_RAW = 'data/raw/'
-PATH_PREPROCESSED = 'data/preprocessed/'
-PATH_MODEL_TRAINING = 'data/mlp_training/'
-PATH_GAPFILLED = 'data/gapfilled/'
-PATH_MODEL_SAVES_MLP = 'model_saves/mlp/'
-PATH_MODEL_SAVES_RF = 'model_saves/rf/'
-PATH_PLOTS = 'plots/'
