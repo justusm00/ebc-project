@@ -19,13 +19,14 @@ filename_rf = 'RandomForest_model_ae6a618e4da83a56de13c7eec7152215.pkl'
 path_data = PATH_PREPROCESSED + 'data_merged_with_nans.csv'
 
 
-def fill_gaps(path_data, filename_mlp, filename_rf):
+def fill_gaps(path_data, filename_mlp, filename_rf, filename_mlpsw=None, diurnal_fill=None):
     """Perform gapfilling on data using pretrained mlp. 
 
     Args:
         path_data (str): path to data (labeled and unlabeled)
         filename_mlp (str): name of file containing MLP parameters
         filename_rf (str): name of file containing RF parameters
+        filename_mlpsw (str): name of file containing the MLP trained only on shortwave radiation and keys (optional)
     """
 
     # extract number of hidden units, hidden layers, whether normalization was used, who trained the mlp
@@ -38,6 +39,8 @@ def fill_gaps(path_data, filename_mlp, filename_rf):
         raise ValueError("Can only perform normalization OR minmax_scaling")
     path_mlp = PATH_MODEL_SAVES_MLP + filename_mlp
     path_rf = PATH_MODEL_SAVES_RF + filename_rf
+    if filename_mlpsw:
+        path_mlpsw = PATH_MODEL_SAVES_MLP + filename_mlpsw
     trainset_means = None
     trainset_stds = None
     trainset_mins = None
@@ -46,6 +49,8 @@ def fill_gaps(path_data, filename_mlp, filename_rf):
 
     mlp_name = filename_mlp.rstrip('.pth')
     rf_name = filename_rf.rstrip('.pkl')
+    if filename_mlpsw:
+        mlpsw_name = filename_mlpsw.rstrip('.pth')
 
     # load MLP features and labels
     with open(PATH_MODEL_SAVES_MLP + 'features/' + mlp_name + '.json', 'r') as file:
@@ -59,6 +64,13 @@ def fill_gaps(path_data, filename_mlp, filename_rf):
         cols_features_rf = json.load(file)
     with open(PATH_MODEL_SAVES_RF + 'labels/' + rf_name + '.json', 'r') as file:
         cols_labels_rf = json.load(file)
+
+    # Load MLPSW features and labels
+    if filename_mlpsw:
+        with open(PATH_MODEL_SAVES_MLP + 'features/' + mlp_name + '.json', 'r') as file:
+            cols_features_mlpsw = json.load(file)
+        with open(PATH_MODEL_SAVES_MLP + 'labels/' + mlp_name + '.json', 'r') as file:
+            cols_labels_mlpsw = json.load(file)
 
 
 
@@ -112,11 +124,36 @@ def fill_gaps(path_data, filename_mlp, filename_rf):
         rf = pickle.load(f)
 
 
+    # Load MLPSW
+    if filename_mlpsw:
+        mlpsw = MLP(len(cols_features_mlpsw), len(cols_labels_mlpsw), num_hidden_units=num_hidden_units, num_hidden_layers=num_hidden_layers)
+        mlpsw.load_state_dict(torch.load(path_mlpsw))
+
+
+        # load statistics
+        if normalization:
+            # load statistics
+            model_means_path_mlpsw = PATH_MODEL_SAVES_MLP + 'statistics/' + mlpsw_name + '_means.npy'
+            model_stds_path_mlpsw = PATH_MODEL_SAVES_MLP + 'statistics/' + mlpsw_name + '_stds.npy'
+            trainset_means_mlpsw = np.load(model_means_path)
+            trainset_stds_mlpsw = np.load(model_stds_path)
+
+
+        if minmax_scaling:
+            model_maxs_path_mlpsw = PATH_MODEL_SAVES_MLP + 'statistics/' + mlpsw_name + '_maxs.npy'
+            model_mins_path_mlpsw = PATH_MODEL_SAVES_MLP + 'statistics/' + mlpsw_name + '_mins.npy'
+            trainset_maxs_mlpsw = np.load(model_maxs_path)
+            trainset_mins_mlpsw = np.load(model_mins_path)    
+
+
     # print losses of models
     loss_test_mlp = compute_test_loss_mlp(mlp, cols_features_mlp, cols_labels_mlp, normalization, minmax_scaling)
     loss_test_rf = compute_test_loss_rf(rf, cols_features_rf, cols_labels_rf)
-
-    print(f"Test MSE for RF: {loss_test_rf:.2f}, Test MSE for MLP: {loss_test_mlp:.2f}")
+    if filename_mlpsw:
+        loss_test_mlpsw = compute_test_loss_mlp(mlpsw, cols_features_mlpsw, cols_labels_mlpsw, normalization, minmax_scaling)
+        print(f"Test MSE for RF: {loss_test_rf:.2f}, Test MSE for MLP: {loss_test_mlp:.2f}, Test MSE for MLPSW: {loss_test_mlpsw:.2f}")
+    else:
+        print(f"Test MSE for RF: {loss_test_rf:.2f}, Test MSE for MLP: {loss_test_mlp:.2f}")
 
 
 
