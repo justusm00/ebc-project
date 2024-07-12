@@ -16,6 +16,7 @@ from modules.MLPstuff import MLP
 filename_mlp = 'mlp_60_4_JM_minmax_01b3187c62d1a0ed0d00b5736092b0d1.pth'
 filename_rf = 'RandomForest_model_ae6a618e4da83a56de13c7eec7152215.pkl'
 filename_mlpsw = 'mlp_60_4_RD1_minmax_d2b43b2dba972e863e8a9a0deeaebbda.pth'
+# filename_mlpsw = None
 
 path_data = PATH_PREPROCESSED + 'data_merged_with_nans.csv'
 
@@ -225,6 +226,12 @@ def fill_gaps(path_data, filename_mlp, filename_rf, filename_mlpsw=None, diurnal
     # merge mlp and and rf
     df = df_mlp[COLS_KEY + cols_gapfilled_mlp].merge(df_rf, how="outer", on=COLS_KEY)
 
+    # print NaN statistics
+    print("Total number of records: \t \t", df.shape[0])
+    for col_mlp, col_mds in zip(cols_gapfilled_mlp, cols_gapfilled_mds):
+        print(f"Number of NaNs in {col_mlp}: \t \t {df[df[col_mlp].isna()].shape[0]}")
+        print(f"Number of NaNs in {col_mds}: \t \t \t {df[df[col_mds].isna()].shape[0]}")
+
     # merge mlp sw on top 
     if filename_mlpsw:
         df = df_mlpsw[COLS_KEY + cols_gapfilled_mlpsw].merge(df, how="outer", on=COLS_KEY)
@@ -233,6 +240,8 @@ def fill_gaps(path_data, filename_mlp, filename_rf, filename_mlpsw=None, diurnal
             df[col_mlp] = df[col_mlp]\
                 .fillna( df[col_mlpsw])
             df = df.drop(col_mlpsw, axis=1)
+            print(f"Number of NaNs in {col_mlp} after adding data from MLP trained on {cols_features_mlpsw}: \t \t {df[df[col_mlp].isna()].shape[0]}")
+
 
 
     # Convert the '30min' column to a timedelta representing the minutes
@@ -245,11 +254,8 @@ def fill_gaps(path_data, filename_mlp, filename_rf, filename_mlpsw=None, diurnal
     df = df.drop(['year', 'month', 'day', '30min', 'time'], axis=1)
 
 
-    # print NaN statistics
-    print("Total number of records:", df.shape[0])
-    for col_mlp, col_mds in zip(cols_gapfilled_mlp, cols_gapfilled_mds):
-        print(f"Number of NaNs in {col_mlp}: {df[df[col_mlp].isna()].shape[0]}")
-        print(f"Number of NaNs in {col_mds}: {df[df[col_mds].isna()].shape[0]}")
+
+
 
 
 
