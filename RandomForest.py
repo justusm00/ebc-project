@@ -19,7 +19,7 @@ cols_labels = COLS_LABELS_ALL
 
 
 
-def fit_rf(cols_key, cols_features, cols_labels, path_model_saves):
+def fit_rf(cols_key, cols_features, cols_labels):
     """Fit random forest model, print train/test MSEs and save model.
 
     Args:
@@ -86,11 +86,11 @@ def fit_rf(cols_key, cols_features, cols_labels, path_model_saves):
     print(f"The Train-MSE is: {mse_train:.2f}, the train-mean error is thus roughly {np.sqrt(mse_train):.2f}")
 
     # Save the model
-    with open(path_model_saves + model_name + '.pkl', 'wb') as file:
+    with open(PATH_MODEL_SAVES_RF + model_name + '.pkl', 'wb') as file:
         pickle.dump(Rfr, file)
 
-    print(f"Model saved under {path_model_saves + model_name + '.pkl'}")
+    print(f"Model saved under {PATH_MODEL_SAVES_RF + model_name + '.pkl'}")
 
 
 if __name__ == '__main__':
-    fit_rf(cols_key=cols_key, cols_features=cols_features, cols_labels=cols_labels, path_model_saves=PATH_MODEL_SAVES_RF)
+    fit_rf(cols_key=cols_key, cols_features=cols_features, cols_labels=cols_labels)

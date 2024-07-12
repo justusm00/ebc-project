@@ -263,51 +263,69 @@ def data_loaders(trainset, valset, testset, batch_size=64, num_cpus=1):
 
 
 
-def get_features_and_labels_from_hash(model_hash):
+def extract_mlp_details_from_name(model_name):
+    """_summary_
+
+    Args:
+        model_name (_type_): _description_
+
+    Raises:
+        ValueError: _description_
+
+    Returns:
+        _type_: _description_
+    """
+    parts = model_name.split('_')
+    num_hidden_units = int(parts[1])
+    num_hidden_layers = int(parts[2])
+    model_hash = parts[-1]
+    normalization = 'norm' in parts
+    minmax_scaling = 'minmax' in parts
+    if (minmax_scaling is True ) and (normalization is True ) :
+        raise ValueError("Can only perform normalization OR minmax_scaling")
     # load RF features and labels
     with open('model_saves/features/' + model_hash + '.json', 'r') as file:
         cols_features = json.load(file)
     with open('model_saves/labels/' + model_hash + '.json', 'r') as file:
         cols_labels = json.load(file)
+
+
     
-    return cols_features, cols_labels
+    return num_hidden_units, num_hidden_layers, model_hash, cols_features, cols_labels, normalization, minmax_scaling
 
 
 
 
-# def compute_test_loss_mlp(model, model_name, num_cpus=1, device='cpu'):
-#     """Compute loss of model on test set
+def compute_test_loss_mlp(model, model_hash, cols_features, cols_labels, normalization, minmax_scaling,
+                           num_cpus=1, device='cpu'):
+    """Compute loss of model on test set
 
-#     Args:
-#         model (_type_): _description_
-#         model_file_name (str): further info is derived from this
-#         num_cpus (int, optional): _description_. Defaults to 1.
-#         device (str, optional): _description_. Defaults to 'cpu'.
+    Args:
+        model (_type_): _description_
+        model_file_name (str): further info is derived from this
+        num_cpus (int, optional): _description_. Defaults to 1.
+        device (str, optional): _description_. Defaults to 'cpu'.
 
-#     Raises:
-#         ValueError: _description_
-#     """
-#     # get features, labels, normalization and minmax scaling
-#     model_hash = 
-
-#     if (minmax_scaling is True ) and (normalization is True ) :
-#         raise ValueError("Can only perform normalization OR minmax_scaling")
-#      # compute and print test losss
-#     _ , testset = grab_data(PATH_MODEL_TRAINING + 'training_data.csv', PATH_MODEL_TRAINING + 'test_data.csv',
-#                                   num_cpus, cols_features, cols_labels, normalization=normalization, minmax_scaling=minmax_scaling)
+    Raises:
+        ValueError: _description_
+    """
+     # compute test loss
+    _ , testset = grab_data(path_train=PATH_MODEL_TRAINING + 'training_data_' + model_hash + '.csv', 
+                                path_test=PATH_MODEL_TRAINING + 'test_data_' + model_hash + '.csv', 
+                                num_cpus=num_cpus, cols_features=cols_features, cols_labels=cols_labels, normalization=normalization, minmax_scaling=minmax_scaling)
 
 
-#     testloader = torch.utils.data.DataLoader(testset,
-#                                              batch_size=10,
-#                                              shuffle=True, 
-#                                              num_workers=1, pin_memory=True)
+    testloader = torch.utils.data.DataLoader(testset,
+                                             batch_size=10,
+                                             shuffle=True, 
+                                             num_workers=1, pin_memory=True)
     
-#     loss = test(dataloader=testloader, model=model, device=device)
-#     return loss
+    loss = test(dataloader=testloader, model=model, device=device)
+    return loss
 
 
 
-def compute_test_loss_rf(model, cols_features, cols_labels):
+def compute_test_loss_rf(model, cols_features, cols_labels, model_hash):
     """Compute loss of random forest on test set
 
     Args:
@@ -323,7 +341,7 @@ def compute_test_loss_rf(model, cols_features, cols_labels):
         ValueError: _description_
     """
 
-    data = pd.read_csv(PATH_MODEL_TRAINING + 'test_data.csv')
+    data = pd.read_csv(PATH_MODEL_TRAINING + 'test_data_' + model_hash + '.csv')
     X = data[cols_features]
     y = data[cols_labels]
     y_pred = model.predict(X)

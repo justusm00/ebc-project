@@ -6,7 +6,7 @@ import json
 import pickle
 
 
-from modules.util import gap_filling_mlp, gap_filling_rf, get_month_day_from_day_of_year, compute_test_loss_rf
+from modules.util import gap_filling_mlp, gap_filling_rf, get_month_day_from_day_of_year, compute_test_loss_rf, compute_test_loss_mlp, extract_mlp_details_from_name
 from modules.columns import COLS_KEY, COLS_KEY_ALT
 from modules.paths import PATH_PREPROCESSED, PATH_GAPFILLED, PATH_MODEL_SAVES_MLP, PATH_MODEL_SAVES_RF
 from modules.MLPstuff import MLP
@@ -21,7 +21,7 @@ filename_mlpsw = 'mlp_60_4_JM_minmax_d2b43b2dba972e863e8a9a0deeaebbda.pth'
 path_data = PATH_PREPROCESSED + 'data_merged_with_nans.csv'
 
 
-def load_mlp(filename_mlp, device='cpu'):
+def load_mlp(filename, device='cpu'):
     """Helper function to load the MLP, features, labels and trainset statistics
 
     Args:
@@ -45,50 +45,70 @@ def load_mlp(filename_mlp, device='cpu'):
 
     """
     # extract number of hidden units, hidden layers, whether normalization was used, who trained the mlp
-    parts = filename_mlp.rstrip('.pth').split('_')
-    num_hidden_units = int(parts[1])
-    num_hidden_layers = int(parts[2])
-    mlp_hash = parts[-1]
-    normalization = 'norm' in parts
-    minmax_scaling = 'minmax' in parts
-    if (minmax_scaling is True ) and (normalization is True ) :
-        raise ValueError("Can only perform normalization OR minmax_scaling")
+    name = filename.rstrip('.pth')
+
+    num_hidden_units, num_hidden_layers, model_hash,\
+        cols_features, cols_labels, normalization, minmax_scaling = extract_mlp_details_from_name(name)
     
-    path_mlp = PATH_MODEL_SAVES_MLP + filename_mlp
+    path = PATH_MODEL_SAVES_MLP + filename
 
     trainset_means = None
     trainset_stds = None
     trainset_mins = None
     trainset_maxs = None
 
-    mlp_name = filename_mlp.rstrip('.pth')
     # load MLP features and labels
-    with open('model_saves/features/' + mlp_hash + '.json', 'r') as file:
+    with open('model_saves/features/' + model_hash + '.json', 'r') as file:
         cols_features = json.load(file)
-    with open('model_saves/labels/' + mlp_hash + '.json', 'r') as file:
+    with open('model_saves/labels/' + model_hash + '.json', 'r') as file:
         cols_labels = json.load(file)
 
     # Load the MLP 
     mlp = MLP(len(cols_features), len(cols_labels), num_hidden_units=num_hidden_units, num_hidden_layers=num_hidden_layers)
-    mlp.load_state_dict(torch.load(path_mlp, map_location=torch.device(device)))
+    mlp.load_state_dict(torch.load(path, map_location=torch.device(device)))
 
     # load statistics
     if normalization:
         # load statistics
-        model_means_path = PATH_MODEL_SAVES_MLP + 'statistics/' + mlp_name + '_means.npy'
-        model_stds_path = PATH_MODEL_SAVES_MLP + 'statistics/' + mlp_name + '_stds.npy'
+        model_means_path = PATH_MODEL_SAVES_MLP + 'statistics/' + name + '_means.npy'
+        model_stds_path = PATH_MODEL_SAVES_MLP + 'statistics/' + name + '_stds.npy'
         trainset_means = np.load(model_means_path)
         trainset_stds = np.load(model_stds_path)
 
 
     if minmax_scaling:
-        model_maxs_path = PATH_MODEL_SAVES_MLP + 'statistics/' + mlp_name + '_maxs.npy'
-        model_mins_path = PATH_MODEL_SAVES_MLP + 'statistics/' + mlp_name + '_mins.npy'
+        model_maxs_path = PATH_MODEL_SAVES_MLP + 'statistics/' + name + '_maxs.npy'
+        model_mins_path = PATH_MODEL_SAVES_MLP + 'statistics/' + name + '_mins.npy'
         trainset_maxs = np.load(model_maxs_path)
         trainset_mins = np.load(model_mins_path)
 
 
-    return mlp, cols_features, cols_labels, normalization, minmax_scaling, trainset_means, trainset_stds, trainset_mins, trainset_maxs
+    return mlp, cols_features, cols_labels, model_hash, normalization, minmax_scaling, trainset_means, trainset_stds, trainset_mins, trainset_maxs
+
+
+def load_rf(filename):
+    """Load random forest model, hash, features and labels
+
+    Args:
+        filename (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """
+    name = filename.rstrip('.pkl')
+    model_hash = name.split('_')[-1]
+    path = PATH_MODEL_SAVES_RF + filename
+
+    # load random forest model
+    with open(path, 'rb') as f:
+        rf = pickle.load(f)
+
+    # load RF features and labels
+    with open('model_saves/features/' + model_hash + '.json', 'r') as file:
+        cols_features = json.load(file)
+    with open('model_saves/labels/' + model_hash + '.json', 'r') as file:
+        cols_labels = json.load(file)
+    return rf, model_hash, cols_features, cols_labels
 
 
 def get_table_key(cols_features):
@@ -140,39 +160,36 @@ def fill_gaps(path_data, filename_mlp, filename_rf, filename_mlpsw=None, diurnal
         filename_rf (str): name of file containing RF parameters
         filename_mlpsw (str): name of file containing the MLP trained only on shortwave radiation and keys (optional)
     """
-    rf_name = filename_rf.rstrip('.pkl')
-    rf_hash = rf_name.split('_')[-1]
-    path_rf = PATH_MODEL_SAVES_RF + filename_rf
-
-    # load random forest model
-    with open(path_rf, 'rb') as f:
-        rf = pickle.load(f)
-
-
-    # load RF features and labels
-    with open('model_saves/features/' + rf_hash + '.json', 'r') as file:
-        cols_features_rf = json.load(file)
-    with open('model_saves/labels/' + rf_hash + '.json', 'r') as file:
-        cols_labels_rf = json.load(file)
+    rf, hash_rf, cols_features_rf, cols_labels_rf = load_rf(filename_rf)
 
 
     # print RF test loss
-    #loss_test_rf = compute_test_loss_rf(rf, filename_rf)
-    #print(f"Test MSE for RF: {loss_test_rf}")
+    loss_test_rf = compute_test_loss_rf(rf, cols_features_rf, cols_labels_rf, hash_rf)
+    print(f"Test MSE for RF trained on {cols_features_rf}: {loss_test_rf:.2f}")
 
 
 
     # load MLPs
-    mlp, cols_features_mlp, cols_labels_mlp, normalization, minmax_scaling, trainset_means,\
+    mlp, cols_features_mlp, cols_labels_mlp, hash_mlp, normalization_mlp, minmax_scaling_mlp, trainset_means,\
         trainset_stds, trainset_mins, trainset_maxs  = load_mlp(filename_mlp)
-    #loss_test_mlp = compute_test_loss_mlp(mlp, filename_mlp)
-    #print(f"Test MSE for MLP trained on {cols_features_mlp}: {loss_test_mlp:.2f}")
+    loss_test_mlp = compute_test_loss_mlp(mlp,
+                                          hash_mlp,
+                                          cols_features_mlp,
+                                          cols_labels_mlp,
+                                          normalization_mlp,
+                                          minmax_scaling_mlp)
+    print(f"Test MSE for MLP trained on {cols_features_mlp}: {loss_test_mlp:.2f}")
 
     if filename_mlpsw:
-        mlpsw, cols_features_mlpsw, cols_labels_mlpsw, normalization_sw, minmax_scaling_sw, \
+        mlpsw, cols_features_mlpsw, cols_labels_mlpsw, hash_mlpsw, normalization_mlpsw, minmax_scaling_mlpsw, \
             trainset_means_sw, trainset_stds_sw, trainset_mins_sw, trainset_maxs_sw  = load_mlp(filename_mlpsw)
-        #loss_test_mlpsw = compute_test_loss_mlp(mlpsw, filename_mlpsw)
-        #print(f"Test MSE for MLP trained on {cols_features_mlpsw}: {loss_test_mlpsw:.2f}")
+        loss_test_mlpsw = compute_test_loss_mlp(mlpsw,
+                                                hash_mlpsw,
+                                                cols_features_mlpsw,
+                                                cols_labels_mlpsw,
+                                                normalization_mlpsw,
+                                                minmax_scaling_mlpsw)
+        print(f"Test MSE for MLP trained on {cols_features_mlpsw}: {loss_test_mlpsw:.2f}")
 
 
 
@@ -206,7 +223,8 @@ def fill_gaps(path_data, filename_mlp, filename_rf, filename_mlpsw=None, diurnal
 
 
     if filename_mlpsw:
-        df_mlpsw = gap_filling_mlp(data=data, mlp=mlpsw, columns_key=cols_key_mlpsw, cols_features=cols_features_mlpsw,
+        df_mlpsw = gap_filling_mlp(data=data, mlp=mlpsw, columns_key=cols_key_mlpsw, 
+                                   cols_features=cols_features_mlpsw,
                                    cols_labels=cols_labels, suffix=suffix_mlpsw, means=trainset_means_sw, stds=trainset_stds_sw,
                                    mins=trainset_mins_sw, maxs=trainset_maxs_sw)
     
