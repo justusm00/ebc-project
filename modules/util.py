@@ -281,7 +281,7 @@ def compute_test_loss_rf(model, cols_features, cols_labels):
 
 
 
-def gap_filling_mlp(data, mlp, columns_key, columns_data, columns_labels, means=None, stds=None, mins=None, maxs=None):
+def gap_filling_mlp(data, mlp, columns_key, columns_data, columns_labels, suffix='_f_mlp', means=None, stds=None, mins=None, maxs=None):
     """Fill gaps using pretrained model.
 
     Args:
@@ -290,6 +290,7 @@ def gap_filling_mlp(data, mlp, columns_key, columns_data, columns_labels, means=
         columns_key (list): columns that uniquely identify a record
         columns_data (list): list of column names used for training
         columns_labels (list): list of column names to predict
+        suffix (str): suffix of gapfilled columns (e.g. H_orig is changed to H_f_mlp per default)
         means (list, optional): List of means, must be provided if training was done on normalized data. Defaults to None.
         stds (list, optional): List of standard deviations, must be provided if training was done on normalized data. Defaults to None.
 
@@ -333,27 +334,15 @@ def gap_filling_mlp(data, mlp, columns_key, columns_data, columns_labels, means=
         pred = mlp(input_tensor).numpy() #  Transform back to numpy 
 
     # create dataframe of predictions 
-    if columns_labels != ['H_f_mlp', 'LE_f_mlp']:
-        columns_labels_pred = [col.replace('_orig', '') + '_f_mlp'  for col in columns_labels]
+    columns_labels_pred = [col.replace('_orig', '') + suffix  for col in columns_labels]
 
-        pred = pd.DataFrame(pred, columns=columns_labels_pred)
-    
-        # merge predictions onto features
-        data_pred = pd.concat([input, pred], axis=1)
+    pred = pd.DataFrame(pred, columns=columns_labels_pred)
 
-        # merge both dataframes
-        data_merged = data.merge(data_pred[columns_key + columns_labels_pred], how="outer", on=columns_key)
+    # merge predictions onto features
+    data_pred = pd.concat([input, pred], axis=1)
 
-    else:
-        columns_labels_pred = ['H_f_mlp', 'LE_f_mlp']
-    
-        pred = pd.DataFrame(pred, columns=columns_labels_pred)
-        
-        # merge predictions onto features
-        data_pred = pd.concat([input, pred], axis=1)
-
-        # merge both dataframes
-        data_merged = data.merge(data_pred[columns_key + columns_labels_pred], how="outer", on=columns_key + columns_labels_pred)
+    # merge both dataframes
+    data_merged = data.merge(data_pred[columns_key + columns_labels_pred], how="outer", on=columns_key)
     
 
     # now, the gapfilled columns have nan values where the original data is not nan. In this case, just take the original values
