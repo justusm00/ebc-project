@@ -90,6 +90,17 @@ def load_mlp(filename_mlp, device='cpu'):
 
 
 def get_table_key(cols_features):
+    """Get table key from list of features or return error if key is neither COLS_KEY nor COLS_KEY_ALT
+
+    Args:
+        cols_features (_type_): _description_
+
+    Raises:
+        ValueError: _description_
+
+    Returns:
+        _type_: _description_
+    """
     # check which key was used 
     if all(elem in cols_features for elem in COLS_KEY):
         cols_key = COLS_KEY
@@ -118,7 +129,7 @@ def set_default_key(df, cols_key):
 
 
 def fill_gaps(path_data, filename_mlp, filename_rf, filename_mlpsw=None, diurnal_fill=None, suffix_mlp='_f_mlp', suffix_mlpsw='_f_mlpsw'):
-    """Perform gapfilling on data using pretrained mlp. 
+    """Perform gapfilling on data using pretrained mlp. Optionally, use MLP trained only on keys and shortwave radiation to fill gaps where no other meteo data is available.
 
     Args:
         path_data (str): path to data (labeled and unlabeled)
@@ -191,7 +202,7 @@ def fill_gaps(path_data, filename_mlp, filename_rf, filename_mlpsw=None, diurnal
 
 
     if filename_mlpsw:
-        df_mlpsw = gap_filling_mlp(data=data, mlp=mlpsw, columns_key=COLS_KEY, columns_data=cols_features_mlpsw,
+        df_mlpsw = gap_filling_mlp(data=data, mlp=mlpsw, columns_key=cols_key_mlpsw, columns_data=cols_features_mlpsw,
                                    columns_labels=cols_labels, suffix=suffix_mlpsw, means=trainset_means_sw, stds=trainset_stds_sw,
                                    mins=trainset_mins_sw, maxs=trainset_maxs_sw)
     
