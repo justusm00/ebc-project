@@ -6,7 +6,7 @@ import json
 import pickle
 
 
-from modules.util import gap_filling_mlp, gap_filling_rf, get_month_day_from_day_of_year, compute_test_loss_mlp, compute_test_loss_rf
+from modules.util import gap_filling_mlp, gap_filling_rf, get_month_day_from_day_of_year, compute_test_loss_rf
 from modules.columns import COLS_KEY, COLS_KEY_ALT
 from modules.paths import PATH_PREPROCESSED, PATH_GAPFILLED, PATH_MODEL_SAVES_MLP, PATH_MODEL_SAVES_RF
 from modules.MLPstuff import MLP
@@ -14,8 +14,8 @@ from modules.MLPstuff import MLP
 
 # SPECIFY THESE
 filename_mlp = 'mlp_60_4_JM_minmax_01b3187c62d1a0ed0d00b5736092b0d1.pth'
-filename_rf = 'RandomForest_model_ae6a618e4da83a56de13c7eec7152215.pkl'
-filename_mlpsw = 'mlp_60_4_RD1_minmax_d2b43b2dba972e863e8a9a0deeaebbda.pth'
+filename_rf = 'RandomForest_model_1e9d20aaf5beee7e5792f7b4e55dc67b.pkl'
+filename_mlpsw = 'mlp_60_4_JM_minmax_d2b43b2dba972e863e8a9a0deeaebbda.pth'
 # filename_mlpsw = None
 
 path_data = PATH_PREPROCESSED + 'data_merged_with_nans.csv'
@@ -45,9 +45,10 @@ def load_mlp(filename_mlp, device='cpu'):
 
     """
     # extract number of hidden units, hidden layers, whether normalization was used, who trained the mlp
-    parts = filename_mlp.split('_')
+    parts = filename_mlp.rstrip('.pth').split('_')
     num_hidden_units = int(parts[1])
     num_hidden_layers = int(parts[2])
+    mlp_hash = parts[-1]
     normalization = 'norm' in parts
     minmax_scaling = 'minmax' in parts
     if (minmax_scaling is True ) and (normalization is True ) :
@@ -62,9 +63,9 @@ def load_mlp(filename_mlp, device='cpu'):
 
     mlp_name = filename_mlp.rstrip('.pth')
     # load MLP features and labels
-    with open(PATH_MODEL_SAVES_MLP + 'features/' + mlp_name + '.json', 'r') as file:
+    with open('model_saves/features/' + mlp_hash + '.json', 'r') as file:
         cols_features = json.load(file)
-    with open(PATH_MODEL_SAVES_MLP + 'labels/' + mlp_name + '.json', 'r') as file:
+    with open('model_saves/labels/' + mlp_hash + '.json', 'r') as file:
         cols_labels = json.load(file)
 
     # Load the MLP 
@@ -129,7 +130,8 @@ def set_default_key(df, cols_key):
 
 
 
-def fill_gaps(path_data, filename_mlp, filename_rf, filename_mlpsw=None, diurnal_fill=None, suffix_mlp='_f_mlp', suffix_mlpsw='_f_mlpsw'):
+def fill_gaps(path_data, filename_mlp, filename_rf, filename_mlpsw=None, diurnal_fill=None,
+              suffix_mlp='_f_mlp', suffix_mlpsw='_f_mlpsw'):
     """Perform gapfilling on data using pretrained mlp. Optionally, use MLP trained only on keys and shortwave radiation to fill gaps where no other meteo data is available.
 
     Args:
@@ -139,6 +141,7 @@ def fill_gaps(path_data, filename_mlp, filename_rf, filename_mlpsw=None, diurnal
         filename_mlpsw (str): name of file containing the MLP trained only on shortwave radiation and keys (optional)
     """
     rf_name = filename_rf.rstrip('.pkl')
+    rf_hash = rf_name.split('_')[-1]
     path_rf = PATH_MODEL_SAVES_RF + filename_rf
 
     # load random forest model
@@ -147,29 +150,29 @@ def fill_gaps(path_data, filename_mlp, filename_rf, filename_mlpsw=None, diurnal
 
 
     # load RF features and labels
-    with open(PATH_MODEL_SAVES_RF + 'features/' + rf_name + '.json', 'r') as file:
+    with open('model_saves/features/' + rf_hash + '.json', 'r') as file:
         cols_features_rf = json.load(file)
-    with open(PATH_MODEL_SAVES_RF + 'labels/' + rf_name + '.json', 'r') as file:
+    with open('model_saves/labels/' + rf_hash + '.json', 'r') as file:
         cols_labels_rf = json.load(file)
 
 
     # print RF test loss
-    loss_test_rf = compute_test_loss_rf(rf, cols_features_rf, cols_labels_rf)
-    print(f"Test MSE for RF: {loss_test_rf}")
+    #loss_test_rf = compute_test_loss_rf(rf, filename_rf)
+    #print(f"Test MSE for RF: {loss_test_rf}")
 
 
 
     # load MLPs
     mlp, cols_features_mlp, cols_labels_mlp, normalization, minmax_scaling, trainset_means,\
         trainset_stds, trainset_mins, trainset_maxs  = load_mlp(filename_mlp)
-    loss_test_mlp = compute_test_loss_mlp(mlp, cols_features_mlp, cols_labels_mlp, normalization, minmax_scaling)
-    print(f"Test MSE for MLP trained on {cols_features_mlp}: {loss_test_mlp:.2f}")
+    #loss_test_mlp = compute_test_loss_mlp(mlp, filename_mlp)
+    #print(f"Test MSE for MLP trained on {cols_features_mlp}: {loss_test_mlp:.2f}")
 
     if filename_mlpsw:
         mlpsw, cols_features_mlpsw, cols_labels_mlpsw, normalization_sw, minmax_scaling_sw, \
             trainset_means_sw, trainset_stds_sw, trainset_mins_sw, trainset_maxs_sw  = load_mlp(filename_mlpsw)
-        loss_test_mlpsw = compute_test_loss_mlp(mlpsw, cols_features_mlpsw, cols_labels_mlpsw, normalization_sw, minmax_scaling_sw)
-        print(f"Test MSE for MLP trained on {cols_features_mlpsw}: {loss_test_mlpsw:.2f}")
+        #loss_test_mlpsw = compute_test_loss_mlp(mlpsw, filename_mlpsw)
+        #print(f"Test MSE for MLP trained on {cols_features_mlpsw}: {loss_test_mlpsw:.2f}")
 
 
 
@@ -195,16 +198,16 @@ def fill_gaps(path_data, filename_mlp, filename_rf, filename_mlpsw=None, diurnal
 
 
     # get both gapfilled dataframes
-    df_mlp = gap_filling_mlp(data=data, mlp=mlp, columns_key=cols_key_mlp, columns_data=cols_features_mlp,
-                             columns_labels=cols_labels, suffix = suffix_mlp, means=trainset_means, stds=trainset_stds,
+    df_mlp = gap_filling_mlp(data=data, mlp=mlp, columns_key=cols_key_mlp, cols_features=cols_features_mlp,
+                             cols_labels=cols_labels, suffix = suffix_mlp, means=trainset_means, stds=trainset_stds,
                              mins=trainset_mins, maxs=trainset_maxs)
 
-    df_rf = gap_filling_rf(data=data, model=rf, columns_key=cols_key_rf, columns_data=cols_features_rf, columns_labels=cols_labels)
+    df_rf = gap_filling_rf(data=data, model=rf, columns_key=cols_key_rf, cols_features=cols_features_rf, cols_labels=cols_labels)
 
 
     if filename_mlpsw:
-        df_mlpsw = gap_filling_mlp(data=data, mlp=mlpsw, columns_key=cols_key_mlpsw, columns_data=cols_features_mlpsw,
-                                   columns_labels=cols_labels, suffix=suffix_mlpsw, means=trainset_means_sw, stds=trainset_stds_sw,
+        df_mlpsw = gap_filling_mlp(data=data, mlp=mlpsw, columns_key=cols_key_mlpsw, cols_features=cols_features_mlpsw,
+                                   cols_labels=cols_labels, suffix=suffix_mlpsw, means=trainset_means_sw, stds=trainset_stds_sw,
                                    mins=trainset_mins_sw, maxs=trainset_maxs_sw)
     
 

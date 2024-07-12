@@ -12,22 +12,25 @@ import torch.optim as optim
 
 ############# UTILITIES ############
 
-from modules.util import grab_data, train_val_splitter, data_loaders, get_hash_from_features_and_labels
+from modules.util import grab_data, train_val_splitter, data_loaders, \
+    get_hash_from_features_and_labels,model_train_test_split
 from modules.MLPstuff import run_training, MLP, test, MyReduceLROnPlateau, SingleBatchDataLoader
 from modules.columns import COLS_FEATURES_ALL, COLS_LABELS_ALL, COLS_KEY, COLS_KEY_ALT
-from modules.paths import PATH_MODEL_TRAINING, PATH_MODEL_SAVES_MLP, PATH_PLOTS
+from modules.paths import PATH_MODEL_TRAINING, PATH_MODEL_SAVES_MLP, PATH_PLOTS, PATH_PREPROCESSED
 
 
 
 # SPECIFY THESE
 cols_key = COLS_KEY # must be COLS_KEY or COLS_KEY_ALT
-cols_features = cols_key + ["incomingShortwaveRadiation", "soilHeatflux", "waterPressureDeficit", "windSpeed"]
+# cols_features = cols_key + ["incomingShortwaveRadiation", "soilHeatflux", "waterPressureDeficit", "windSpeed"]
+cols_features = cols_key + ["incomingShortwaveRadiation"]
+
 cols_labels = COLS_LABELS_ALL
 normalization = False
 minmax_scaling = True
 who_trained = 'JM' # author
 GPU = False
-num_epochs = 150
+num_epochs = 2
 lr = 10**(-3)
 patience_early_stopper = 100
 patience_scheduler = 10
@@ -39,7 +42,9 @@ batch_size = 10
 
 
 def train_mlp(GPU, num_epochs, lr,
-              path_model_saves, batch_size, path_plots, cols_key, cols_features=COLS_FEATURES_ALL, cols_labels=COLS_LABELS_ALL, normalization=True, minmax_scaling=False, patience_early_stopper=10, patience_scheduler=10):
+              path_model_saves, batch_size, path_plots, cols_key, cols_features=COLS_FEATURES_ALL, cols_labels=COLS_LABELS_ALL, 
+              path_model_training=PATH_MODEL_TRAINING, path_preprocessed=PATH_PREPROCESSED, normalization=True, minmax_scaling=False, 
+              patience_early_stopper=10, patience_scheduler=10):
     """Train MLP.
 
     Args:
@@ -116,9 +121,18 @@ def train_mlp(GPU, num_epochs, lr,
     if GPU==True:
         torch.cuda.empty_cache()
 
+    # try to load train and test data. If not available, create train / test split for this combination of features and labels
+    try:
+        trainset, testset = grab_data(path_train=path_model_training + 'training_data_' + model_hash + '.csv', 
+                                      path_test=path_model_training + 'test_data.csv', num_cpus=num_cpus, cols_features=cols_features, cols_labels=cols_labels, normalization=normalization, minmax_scaling=minmax_scaling)
+    except:
+        print("No train and test data available for given feature/label combination. Creating one ... \n")
+        model_train_test_split(path_data=path_preprocessed + 'data_merged_with_nans.csv', cols_features=cols_features, 
+                               cols_labels=cols_labels, 
+                               path_save=path_model_training, model_hash=model_hash)
+        trainset, testset = grab_data(path_train=path_model_training + 'training_data_' + model_hash + '.csv', 
+                                path_test=path_model_training + 'test_data_' + model_hash + '.csv', num_cpus=num_cpus, cols_features=cols_features, cols_labels=cols_labels, normalization=normalization, minmax_scaling=minmax_scaling)
 
-    trainset, testset = grab_data(PATH_MODEL_TRAINING + 'training_data.csv', PATH_MODEL_TRAINING + 'test_data.csv',
-                                  num_cpus, cols_features, cols_labels, normalization=normalization, minmax_scaling=minmax_scaling)
 
     trainset, valset = train_val_splitter(trainset, val_frac=0.2)
 
@@ -176,8 +190,8 @@ def train_mlp(GPU, num_epochs, lr,
     print(f"Saved model to {model_save_path} \n")
 
     # save features and labels
-    features_json = path_model_saves + 'features/' + model_name + '.json'
-    labels_json = path_model_saves + 'labels/' + model_name + '.json'
+    features_json = 'model_saves/features/' + model_hash+ '.json'
+    labels_json = 'model_saves/labels/' + model_hash + '.json'
     with open(features_json, 'w') as file:
         json.dump(cols_features, file)
     with open(labels_json, 'w') as file:
@@ -213,9 +227,18 @@ def train_mlp(GPU, num_epochs, lr,
 
 
 if __name__ == '__main__':
-    train_mlp(GPU=GPU, num_epochs=num_epochs, lr=lr,
-              path_model_saves=PATH_MODEL_SAVES_MLP, batch_size=batch_size,
-              path_plots=PATH_PLOTS, cols_key=cols_key, cols_features=cols_features,
-              cols_labels=cols_labels, normalization=normalization,
-              minmax_scaling=minmax_scaling, patience_early_stopper=patience_early_stopper,
+    train_mlp(GPU=GPU,
+              num_epochs=num_epochs,
+              lr=lr,
+              path_model_saves=PATH_MODEL_SAVES_MLP,
+              batch_size=batch_size,
+              path_plots=PATH_PLOTS,
+              cols_key=cols_key,
+              cols_features=cols_features,
+              cols_labels=cols_labels,
+              path_model_training=PATH_MODEL_TRAINING,
+              path_preprocessed=PATH_PREPROCESSED,
+              normalization=normalization,
+              minmax_scaling=minmax_scaling,
+              patience_early_stopper=patience_early_stopper,
               patience_scheduler=patience_scheduler)

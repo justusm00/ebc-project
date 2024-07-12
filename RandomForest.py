@@ -7,8 +7,8 @@ import json
 
 
 from modules.columns import COLS_LABELS_ALL, COLS_KEY, COLS_KEY_ALT
-from modules.paths import PATH_MODEL_TRAINING, PATH_MODEL_SAVES_RF
-from modules.util import get_hash_from_features_and_labels
+from modules.paths import PATH_MODEL_TRAINING, PATH_MODEL_SAVES_RF, PATH_PREPROCESSED
+from modules.util import get_hash_from_features_and_labels, model_train_test_split
 
 
 # ALWAYS SPECIFY THESE
@@ -46,15 +46,25 @@ def fit_rf(cols_key, cols_features, cols_labels, path_model_saves):
     print(f"Labels used: {len(cols_labels)} ({cols_labels}) \n")
 
     # save features and labels
-    features_json = path_model_saves + 'features/' + model_name + '.json'
-    labels_json = path_model_saves + 'labels/' + model_name + '.json'
+    features_json = 'model_saves/features/' + model_hash + '.json'
+    labels_json = 'model_saves/labels/' + model_hash + '.json'
     with open(features_json, 'w') as file:
         json.dump(cols_features, file)
     with open(labels_json, 'w') as file:
         json.dump(cols_labels, file)
 
-    training_data = pd.read_csv(PATH_MODEL_TRAINING + 'training_data.csv')
-    test_data = pd.read_csv(PATH_MODEL_TRAINING + 'test_data.csv')
+    try:
+        training_data = pd.read_csv(PATH_MODEL_TRAINING + 'training_data_' + model_hash + '.csv')
+        test_data = pd.read_csv(PATH_MODEL_TRAINING + 'test_data_' + model_hash + '.csv')
+    except:
+        print("No train and test data available for given feature/label combination. Creating one ... \n")
+        model_train_test_split(path_data=PATH_PREPROCESSED + 'data_merged_with_nans.csv', 
+                               cols_features=cols_features, 
+                               cols_labels=cols_labels, 
+                               path_save=PATH_MODEL_TRAINING, model_hash=model_hash)
+        training_data = pd.read_csv(PATH_MODEL_TRAINING + 'training_data_' + model_hash + '.csv')
+        test_data = pd.read_csv(PATH_MODEL_TRAINING + 'test_data_' + model_hash + '.csv')
+
 
     X_train = training_data[cols_features]
     X_test = test_data[cols_features]
