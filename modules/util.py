@@ -299,7 +299,7 @@ def gap_filling_mlp(data, mlp, columns_key, columns_data, columns_labels, means=
 
     if ((means is None) and (stds is not None)) or ((stds is None) and (means is not None)) :
         raise ValueError("Must specify either means and stds or none of them.")
-    if ((means is None) and (stds is not None)) or ((stds is None) and (means is not None)) :
+    if ((mins is None) and (maxs is not None)) or ((maxs is None) and (mins is not None)) :
         raise ValueError("Must specify either mins and maxs or none of them.")
     if ((means is not None) and (maxs is not None)) or ((means is not None) and (mins is not None)) :
         raise ValueError("If means and stds are specified, mins and maxs must be None and vice versa")
