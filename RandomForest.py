@@ -13,7 +13,8 @@ from modules.util import get_hash_from_features_and_labels, model_train_test_spl
 
 # ALWAYS SPECIFY THESE
 cols_key = COLS_KEY_ALT # must be COLS_KEY or COLS_KEY_ALT
-cols_features = cols_key + ["incomingShortwaveRadiation", "soilHeatflux"] 
+cols_features = cols_key + ["incomingShortwaveRadiation", "soilHeatflux", "waterPressureDeficit"]
+# cols_features = cols_key + ["incomingShortwaveRadiation"]
 cols_labels = COLS_LABELS_ALL
 
 

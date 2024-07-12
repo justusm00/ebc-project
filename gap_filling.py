@@ -14,10 +14,12 @@ from modules.MLPstuff import MLP
 
 
 # SPECIFY THESE
-filename_mlp = 'mlp_60_4_JM_minmax_01b3187c62d1a0ed0d00b5736092b0d1.pth'
-filename_rf = 'RandomForest_model_1e9d20aaf5beee7e5792f7b4e55dc67b.pkl'
-filename_mlpsw = 'mlp_60_4_JM_minmax_d2b43b2dba972e863e8a9a0deeaebbda.pth'
+filename_mlp = 'mlp_60_4_JM_minmax_01b3187c62d1a0ed0d00b5736092b0d1.pth' # mlp trained on important features
+filename_mlpsw = 'mlp_60_4_JM_minmax_d2b43b2dba972e863e8a9a0deeaebbda.pth' # mlp trained on keys + incoming shortwave radiation
 # filename_mlpsw = None
+filename_rf = 'RandomForest_model_dea73fac9940fa6b1ad3defbe517d876.pkl' # rf trained on important features
+filename_rfsw = 'RandomForest_model_3311a46a744485acf24fe5c02b8f8dab.pkl' # rf trained on keys + incoming shortwave radiation
+# filename_rfsw = None
 
 path_data = PATH_PREPROCESSED + 'data_merged_with_nans.csv'
 
@@ -151,15 +153,25 @@ def set_default_key(df, cols_key):
 
 
 
-def fill_gaps(path_data, filename_mlp, filename_rf, filename_mlpsw=None, diurnal_fill=None,
-              suffix_mlp='_f_mlp', suffix_mlpsw='_f_mlpsw'):
-    """Perform gapfilling on data using pretrained mlp. Optionally, use MLP trained only on keys and shortwave radiation to fill gaps where no other meteo data is available.
+def fill_gaps(path_data,
+              filename_mlp,
+              filename_rf,
+              filename_mlpsw=None,
+              filename_rfsw=None,
+              suffix_mlp='_f_mlp',
+              suffix_mlpsw='_f_mlpsw',
+              suffix_rf='_f_rf',
+              suffix_rfsw='_f_rfsw',
+              diurnal_fill=None):
+    """Perform gapfilling on data using pretrained mlp. Optionally, use MLP and Rf trained only on keys and incoming shortwave radiation to fill gaps where no other meteo data is available.
 
     Args:
         path_data (str): path to data (labeled and unlabeled)
         filename_mlp (str): name of file containing MLP parameters
         filename_rf (str): name of file containing RF parameters
         filename_mlpsw (str): name of file containing the MLP trained only on shortwave radiation and keys (optional)
+        filename_rfsw (str): name of file containing the RF trained only on shortwave radiation and keys (optional)
+
     """
     rf, hash_rf, cols_features_rf, cols_labels_rf = load_rf(filename_rf)
 
@@ -167,6 +179,16 @@ def fill_gaps(path_data, filename_mlp, filename_rf, filename_mlpsw=None, diurnal
     # print RF test loss
     loss_test_rf = compute_test_loss_rf(rf, cols_features_rf, cols_labels_rf, hash_rf)
     print(f"Test MSE for RF trained on {cols_features_rf}: {loss_test_rf:.2f}")
+
+    if filename_rfsw:
+        rfsw, hash_rfsw, cols_features_rfsw, cols_labels_rfsw = load_rf(filename_rfsw)
+
+
+        # print RF test loss
+        loss_test_rfsw = compute_test_loss_rf(rfsw, cols_features_rfsw, cols_labels_rfsw, hash_rfsw)
+        print(f"Test MSE for RF trained on {cols_features_rfsw}: {loss_test_rfsw:.2f}")
+
+
 
 
 
@@ -204,23 +226,26 @@ def fill_gaps(path_data, filename_mlp, filename_rf, filename_mlpsw=None, diurnal
     cols_labels = cols_labels_rf
 
     
-
     # get table keys for merging
     cols_key_rf = get_table_key(cols_features_rf)
     cols_key_mlp = get_table_key(cols_features_mlp)
     if filename_mlpsw:
         cols_key_mlpsw = get_table_key(cols_features_mlpsw)
+
+    if filename_rfsw:
+        cols_key_rfsw= get_table_key(cols_features_rfsw)
       
     # load data
     data = pd.read_csv(path_data)
 
 
-    # get both gapfilled dataframes
+    # get gapfilled dataframes
     df_mlp = gap_filling_mlp(data=data, mlp=mlp, columns_key=cols_key_mlp, cols_features=cols_features_mlp,
                              cols_labels=cols_labels, suffix=suffix_mlp, means=trainset_means, stds=trainset_stds,
                              mins=trainset_mins, maxs=trainset_maxs)
 
-    df_rf = gap_filling_rf(data=data, model=rf, columns_key=cols_key_rf, cols_features=cols_features_rf, cols_labels=cols_labels)
+    df_rf = gap_filling_rf(data=data, model=rf, columns_key=cols_key_rf, cols_features=cols_features_rf,
+                           cols_labels=cols_labels, suffix=suffix_rf)
 
 
     if filename_mlpsw:
@@ -228,21 +253,23 @@ def fill_gaps(path_data, filename_mlp, filename_rf, filename_mlpsw=None, diurnal
                                    cols_features=cols_features_mlpsw,
                                    cols_labels=cols_labels, suffix=suffix_mlpsw, means=trainset_means_sw, stds=trainset_stds_sw,
                                    mins=trainset_mins_sw, maxs=trainset_maxs_sw)
-    
+        
+    if filename_rfsw:
+        df_rfsw = gap_filling_rf(data=data, model=rfsw, columns_key=cols_key_rfsw,
+                                 cols_features=cols_features_rfsw, cols_labels=cols_labels, suffix=suffix_rfsw)
 
+    
 
     # make sure all have the same key so that they can be merged (just use the default key)
     df_mlp = set_default_key(df_mlp, cols_key_mlp)
     df_rf = set_default_key(df_rf, cols_key_rf)
     if filename_mlpsw:
         df_mlpsw = set_default_key(df_mlpsw, cols_key_mlpsw)
+    if filename_rfsw:
+        df_rfsw = set_default_key(df_rfsw, cols_key_rfsw)
 
-    cols_key_mlpsw = COLS_KEY
-    cols_key_mlp = COLS_KEY
-    cols_key_rf = COLS_KEY
 
     cols_gapfilled_mlp = [col.replace('_orig', '') + suffix_mlp for col in cols_labels]
-    cols_gapfilled_mlpsw = [col.replace('_orig', '') + suffix_mlpsw for col in cols_labels]
     cols_gapfilled_mds = [col.replace('_orig', '') + '_f' for col in cols_labels]
 
     # merge mlp and and rf
@@ -254,8 +281,22 @@ def fill_gaps(path_data, filename_mlp, filename_rf, filename_mlpsw=None, diurnal
         print(f"Number of NaNs in {col_mlp}: {df[df[col_mlp].isna()].shape[0]}")
         print(f"Number of NaNs in {col_mds}: {df[df[col_mds].isna()].shape[0]}")
 
-    # merge mlp sw on top 
+
+
+    if filename_rfsw:
+        cols_gapfilled_rf = [col.replace('_orig', '') + suffix_rf for col in cols_labels]
+        cols_gapfilled_rfsw = [col.replace('_orig', '') + suffix_rfsw for col in cols_labels]
+        df = df_rfsw[COLS_KEY + cols_gapfilled_rfsw].merge(df, how="outer", on=COLS_KEY)
+        # Now fill the dataframe
+        for col_rf, col_rfsw in zip(cols_gapfilled_rf, cols_gapfilled_rfsw):
+            df[col_rf] = df[col_rf]\
+                .fillna( df[col_rfsw])
+            df = df.drop(col_rfsw, axis=1)
+            print(f"Number of NaNs in {col_rf} after adding data from RF trained on {cols_features_rfsw}: {df[df[col_rf].isna()].shape[0]}")
+
+    # merge sw on top 
     if filename_mlpsw:
+        cols_gapfilled_mlpsw = [col.replace('_orig', '') + suffix_mlpsw for col in cols_labels]
         df = df_mlpsw[COLS_KEY + cols_gapfilled_mlpsw].merge(df, how="outer", on=COLS_KEY)
         # Now fill the dataframe
         for col_mlp, col_mlpsw in zip(cols_gapfilled_mlp, cols_gapfilled_mlpsw):
@@ -263,6 +304,8 @@ def fill_gaps(path_data, filename_mlp, filename_rf, filename_mlpsw=None, diurnal
                 .fillna( df[col_mlpsw])
             df = df.drop(col_mlpsw, axis=1)
             print(f"Number of NaNs in {col_mlp} after adding data from MLP trained on {cols_features_mlpsw}: {df[df[col_mlp].isna()].shape[0]}")
+
+
 
 
 
@@ -292,4 +335,4 @@ def fill_gaps(path_data, filename_mlp, filename_rf, filename_mlpsw=None, diurnal
 
 
 if __name__ == '__main__':
-    fill_gaps(path_data=path_data, filename_mlp=filename_mlp, filename_rf=filename_rf, filename_mlpsw=filename_mlpsw)
+    fill_gaps(path_data=path_data, filename_mlp=filename_mlp, filename_rf=filename_rf, filename_mlpsw=filename_mlpsw, filename_rfsw=filename_rfsw)
