@@ -8,7 +8,8 @@ import pickle
 
 from modules.util import gap_filling_mlp, gap_filling_rf, get_month_day_from_day_of_year, compute_test_loss_rf, compute_test_loss_mlp, extract_mlp_details_from_name
 from modules.columns import COLS_KEY, COLS_KEY_ALT
-from modules.paths import PATH_PREPROCESSED, PATH_GAPFILLED, PATH_MODEL_SAVES_MLP, PATH_MODEL_SAVES_RF
+from modules.paths import PATH_PREPROCESSED, PATH_GAPFILLED, PATH_MODEL_SAVES_MLP,\
+    PATH_MODEL_SAVES_RF, PATH_MODEL_SAVES_FEATURES, PATH_MODEL_SAVES_LABELS
 from modules.MLPstuff import MLP
 
 
@@ -58,9 +59,9 @@ def load_mlp(filename, device='cpu'):
     trainset_maxs = None
 
     # load MLP features and labels
-    with open('model_saves/features/' + model_hash + '.json', 'r') as file:
+    with open(PATH_MODEL_SAVES_FEATURES + model_hash + '.json', 'r') as file:
         cols_features = json.load(file)
-    with open('model_saves/labels/' + model_hash + '.json', 'r') as file:
+    with open(PATH_MODEL_SAVES_LABELS + model_hash + '.json', 'r') as file:
         cols_labels = json.load(file)
 
     # Load the MLP 
@@ -104,9 +105,9 @@ def load_rf(filename):
         rf = pickle.load(f)
 
     # load RF features and labels
-    with open('model_saves/features/' + model_hash + '.json', 'r') as file:
+    with open(PATH_MODEL_SAVES_FEATURES + model_hash + '.json', 'r') as file:
         cols_features = json.load(file)
-    with open('model_saves/labels/' + model_hash + '.json', 'r') as file:
+    with open(PATH_MODEL_SAVES_LABELS + model_hash + '.json', 'r') as file:
         cols_labels = json.load(file)
     return rf, model_hash, cols_features, cols_labels
 
@@ -216,7 +217,7 @@ def fill_gaps(path_data, filename_mlp, filename_rf, filename_mlpsw=None, diurnal
 
     # get both gapfilled dataframes
     df_mlp = gap_filling_mlp(data=data, mlp=mlp, columns_key=cols_key_mlp, cols_features=cols_features_mlp,
-                             cols_labels=cols_labels, suffix = suffix_mlp, means=trainset_means, stds=trainset_stds,
+                             cols_labels=cols_labels, suffix=suffix_mlp, means=trainset_means, stds=trainset_stds,
                              mins=trainset_mins, maxs=trainset_maxs)
 
     df_rf = gap_filling_rf(data=data, model=rf, columns_key=cols_key_rf, cols_features=cols_features_rf, cols_labels=cols_labels)
@@ -248,10 +249,10 @@ def fill_gaps(path_data, filename_mlp, filename_rf, filename_mlpsw=None, diurnal
     df = df_mlp[COLS_KEY + cols_gapfilled_mlp].merge(df_rf, how="outer", on=COLS_KEY)
 
     # print NaN statistics
-    print("Total number of records: \t \t", df.shape[0])
+    print("Total number of records:", df.shape[0])
     for col_mlp, col_mds in zip(cols_gapfilled_mlp, cols_gapfilled_mds):
-        print(f"Number of NaNs in {col_mlp}: \t \t {df[df[col_mlp].isna()].shape[0]}")
-        print(f"Number of NaNs in {col_mds}: \t \t \t {df[df[col_mds].isna()].shape[0]}")
+        print(f"Number of NaNs in {col_mlp}: {df[df[col_mlp].isna()].shape[0]}")
+        print(f"Number of NaNs in {col_mds}: {df[df[col_mds].isna()].shape[0]}")
 
     # merge mlp sw on top 
     if filename_mlpsw:
@@ -261,7 +262,7 @@ def fill_gaps(path_data, filename_mlp, filename_rf, filename_mlpsw=None, diurnal
             df[col_mlp] = df[col_mlp]\
                 .fillna( df[col_mlpsw])
             df = df.drop(col_mlpsw, axis=1)
-            print(f"Number of NaNs in {col_mlp} after adding data from MLP trained on {cols_features_mlpsw}: \t \t {df[df[col_mlp].isna()].shape[0]}")
+            print(f"Number of NaNs in {col_mlp} after adding data from MLP trained on {cols_features_mlpsw}: {df[df[col_mlp].isna()].shape[0]}")
 
 
 
@@ -273,11 +274,6 @@ def fill_gaps(path_data, filename_mlp, filename_rf, filename_mlpsw=None, diurnal
 
     # drop year, month, day columns
     df = df.drop(['year', 'month', 'day', '30min', 'time'], axis=1)
-
-
-
-
-
 
 
     # filter by location and sort by timestamps

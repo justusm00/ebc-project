@@ -16,7 +16,8 @@ from modules.util import grab_data, train_val_splitter, data_loaders, \
     get_hash_from_features_and_labels,model_train_test_split
 from modules.MLPstuff import run_training, MLP, test, MyReduceLROnPlateau, SingleBatchDataLoader
 from modules.columns import COLS_FEATURES_ALL, COLS_LABELS_ALL, COLS_KEY, COLS_KEY_ALT
-from modules.paths import PATH_MODEL_TRAINING, PATH_MODEL_SAVES_MLP, PATH_PLOTS, PATH_PREPROCESSED
+from modules.paths import PATH_MODEL_TRAINING, PATH_MODEL_SAVES_MLP, PATH_PLOTS, PATH_PREPROCESSED,\
+    PATH_MODEL_SAVES_FEATURES, PATH_MODEL_SAVES_LABELS
 
 
 
@@ -123,7 +124,7 @@ def train_mlp(GPU, num_epochs, lr, batch_size, cols_key, cols_features=COLS_FEAT
     # try to load train and test data. If not available, create train / test split for this combination of features and labels
     try:
         trainset, testset = grab_data(path_train=PATH_MODEL_TRAINING + 'training_data_' + model_hash + '.csv', 
-                                      path_test=PATH_MODEL_TRAINING + 'test_data.csv', num_cpus=num_cpus, cols_features=cols_features, cols_labels=cols_labels, normalization=normalization, minmax_scaling=minmax_scaling)
+                                path_test=PATH_MODEL_TRAINING + 'test_data_' + model_hash + '.csv', num_cpus=num_cpus, cols_features=cols_features, cols_labels=cols_labels, normalization=normalization, minmax_scaling=minmax_scaling)
     except:
         print("No train and test data available for given feature/label combination. Creating one ... \n")
         model_train_test_split(path_data=PATH_PREPROCESSED + 'data_merged_with_nans.csv', 
@@ -190,8 +191,8 @@ def train_mlp(GPU, num_epochs, lr, batch_size, cols_key, cols_features=COLS_FEAT
     print(f"Saved model to {model_save_path} \n")
 
     # save features and labels
-    features_json = 'model_saves/features/' + model_hash+ '.json'
-    labels_json = 'model_saves/labels/' + model_hash + '.json'
+    features_json = PATH_MODEL_SAVES_FEATURES + model_hash+ '.json'
+    labels_json = PATH_MODEL_SAVES_LABELS + model_hash + '.json'
     with open(features_json, 'w') as file:
         json.dump(cols_features, file)
     with open(labels_json, 'w') as file:
