@@ -3,12 +3,15 @@ import pandas as pd
 import torch
 from torch.utils.data import Dataset
 from sklearn.metrics import mean_squared_error
+from sklearn.model_selection import train_test_split
+
 
 
 from modules.MLPstuff import test
 import datetime
 import hashlib
 from modules.paths import PATH_MODEL_TRAINING
+import json
 
 
 
@@ -97,15 +100,15 @@ class EBCDataset(Dataset):
 
 
 # Data loader
-def grab_data(path_train, path_test, num_cpus, columns_data=None, columns_labels=None, normalization=False, minmax_scaling=False):
+def grab_data(path_train, path_test, num_cpus, cols_features=None, cols_labels=None, normalization=False, minmax_scaling=False):
     """Loads training and test data from respective directories. 
 
     Args:
         path_train (_type_): _description_
         path_test (_type_): _description_
         num_cpus (_type_): _description_
-        columns_data (_type_, optional): _description_. Defaults to None.
-        columns_labels (_type_, optional): _description_. Defaults to None.
+        cols_features (_type_, optional): _description_. Defaults to None.
+        cols_labels (_type_, optional): _description_. Defaults to None.
         normalization (bool, optional): If True, normalize data based on trainset statistics.
         minmax_scaling (bool, optional): If True, perform minmax scaling
 
@@ -121,17 +124,17 @@ def grab_data(path_train, path_test, num_cpus, columns_data=None, columns_labels
     testset = pd.read_csv(path_test)
 
     # Select data and labels
-    if columns_data == None:
-        columns_data = ['CO2', 'H2O', 'Ustar', 'location', 'year', 'month', 'day', '30min']
-    if columns_labels == None:
-        columns_labels = ['H_orig', 'LE_orig']
+    if cols_features == None:
+        cols_features = ['CO2', 'H2O', 'Ustar', 'location', 'year', 'month', 'day', '30min']
+    if cols_labels == None:
+        cols_labels = ['H_orig', 'LE_orig']
    
 
     # Convert to torch tensor
-    trainset_data = torch.tensor(trainset[ columns_data ].values, dtype=torch.float32)
-    trainset_labels = torch.tensor(trainset[ columns_labels].values, dtype=torch.float32)
-    testset_data = torch.tensor(testset[ columns_data ].values, dtype=torch.float32)
-    testset_labels = torch.tensor(testset[ columns_labels].values, dtype=torch.float32)
+    trainset_data = torch.tensor(trainset[ cols_features ].values, dtype=torch.float32)
+    trainset_labels = torch.tensor(trainset[ cols_labels].values, dtype=torch.float32)
+    testset_data = torch.tensor(testset[ cols_features ].values, dtype=torch.float32)
+    testset_labels = torch.tensor(testset[ cols_labels].values, dtype=torch.float32)
     # first load unnormalized datasets
     trainset = EBCDataset(trainset_data, trainset_labels, normalization=False)
     testset = EBCDataset(testset_data, testset_labels, normalization=False)
@@ -167,6 +170,44 @@ def grab_data(path_train, path_test, num_cpus, columns_data=None, columns_labels
     return trainset, testset
     
 
+
+def model_train_test_split(path_data, cols_features, cols_labels, path_save, model_hash, test_size=0.2, 
+                           random_state=42):
+    """Perform random train test split and drop nan values. This needs to be done for each unique combination of features and labels since the data availability depends on this combination. The train and test data are save to path_save and identified by a unique hash generated from the feature-label-combination.
+
+    Args:
+        df (_type_): _description_
+        cols_features (_type_): _description_
+        cols_labels (_type_): _description_
+        path_save (_type_): _description_
+        model_hash (str): identifying combination of features and labels
+        test_size (float, optional): _description_. Defaults to 0.2.
+        random_state (int, optional): _description_. Defaults to 42.
+    """
+    # load data
+    df = pd.read_csv(path_data)
+    print(f"Number of records in original data: {df.shape[0]}")
+    # drop nan values
+    df = df[cols_features + cols_labels]
+    df = df.dropna()
+    print(f"Number of records after dropping rows with nan values in feature / label columns: {df.shape[0]}")
+    # Define features and target
+    X = df[cols_features]  # Features
+    y = df[cols_labels]  # Target
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=random_state)
+    # concatenate again
+    df_train = pd.concat([X_train, y_train], axis=1)
+    df_test = pd.concat([X_test, y_test], axis=1)
+
+    path_train = path_save + 'training_data_' + model_hash + '.csv'
+    path_test = path_save + 'test_data_' + model_hash + '.csv'
+    # save as csv
+    df_train.to_csv(path_train, index=False)
+    df_test.to_csv(path_test, index=False)
+
+    print(f"Saved train data to {path_train} \n")
+    print(f"Saved test data to {path_test} \n")
+    return 
     
 
 
@@ -222,27 +263,59 @@ def data_loaders(trainset, valset, testset, batch_size=64, num_cpus=1):
 
 
 
+def extract_mlp_details_from_name(model_name):
+    """_summary_
 
-def compute_test_loss_mlp(model, cols_features, cols_labels, normalization, minmax_scaling, num_cpus=1, device='cpu'):
+    Args:
+        model_name (_type_): _description_
+
+    Raises:
+        ValueError: _description_
+
+    Returns:
+        _type_: _description_
+    """
+    parts = model_name.split('_')
+    num_hidden_units = int(parts[1])
+    num_hidden_layers = int(parts[2])
+    model_hash = parts[-1]
+    normalization = 'norm' in parts
+    minmax_scaling = 'minmax' in parts
+    if (minmax_scaling is True ) and (normalization is True ) :
+        raise ValueError("Can only perform normalization OR minmax_scaling")
+    # load RF features and labels
+    with open('model_saves/features/' + model_hash + '.json', 'r') as file:
+        cols_features = json.load(file)
+    with open('model_saves/labels/' + model_hash + '.json', 'r') as file:
+        cols_labels = json.load(file)
+
+
+    
+    return num_hidden_units, num_hidden_layers, model_hash, cols_features, cols_labels, normalization, minmax_scaling
+
+
+
+
+def compute_test_loss_mlp(model, model_hash, cols_features, cols_labels, normalization, minmax_scaling,
+                           num_cpus=1, device='cpu'):
     """Compute loss of model on test set
 
     Args:
         model (_type_): _description_
-        cols_features (_type_): _description_
-        cols_labels (_type_): _description_
-        normalization (_type_): _description_
-        minmax_scaling (_type_): _description_
+        model_hash: needed to load test data
+        cols_features: features used for training
+        normalization: was training data normalized?
+        minmax_scaling: was minmax scaling applied to training data?
         num_cpus (int, optional): _description_. Defaults to 1.
         device (str, optional): _description_. Defaults to 'cpu'.
 
     Raises:
         ValueError: _description_
     """
-    if (minmax_scaling is True ) and (normalization is True ) :
-        raise ValueError("Can only perform normalization OR minmax_scaling")
-     # compute and print test losss
-    _ , testset = grab_data(PATH_MODEL_TRAINING + 'training_data.csv', PATH_MODEL_TRAINING + 'test_data.csv',
-                                  num_cpus, cols_features, cols_labels, normalization=normalization, minmax_scaling=minmax_scaling)
+     # compute test loss
+    _ , testset = grab_data(path_train=PATH_MODEL_TRAINING + 'training_data_' + model_hash + '.csv', 
+                                path_test=PATH_MODEL_TRAINING + 'test_data_' + model_hash + '.csv', 
+                                num_cpus=num_cpus, cols_features=cols_features, cols_labels=cols_labels, normalization=normalization, minmax_scaling=minmax_scaling)
 
 
     testloader = torch.utils.data.DataLoader(testset,
@@ -255,23 +328,20 @@ def compute_test_loss_mlp(model, cols_features, cols_labels, normalization, minm
 
 
 
-def compute_test_loss_rf(model, cols_features, cols_labels):
+def compute_test_loss_rf(model, cols_features, cols_labels, model_hash):
     """Compute loss of random forest on test set
 
     Args:
         model (_type_): _description_
         cols_features (_type_): _description_
         cols_labels (_type_): _description_
-        normalization (_type_): _description_
-        minmax_scaling (_type_): _description_
-        num_cpus (int, optional): _description_. Defaults to 1.
-        device (str, optional): _description_. Defaults to 'cpu'.
+        model_hash (str): needed to load test data
 
     Raises:
         ValueError: _description_
     """
 
-    data = pd.read_csv(PATH_MODEL_TRAINING + 'test_data.csv')
+    data = pd.read_csv(PATH_MODEL_TRAINING + 'test_data_' + model_hash + '.csv')
     X = data[cols_features]
     y = data[cols_labels]
     y_pred = model.predict(X)
@@ -281,15 +351,17 @@ def compute_test_loss_rf(model, cols_features, cols_labels):
 
 
 
-def gap_filling_mlp(data, mlp, columns_key, columns_data, columns_labels, means=None, stds=None, mins=None, maxs=None):
+def gap_filling_mlp(data, mlp, columns_key, cols_features, cols_labels, suffix='_f_mlp', means=None, stds=None,
+                     mins=None, maxs=None):
     """Fill gaps using pretrained model.
 
     Args:
         data (pd.DataFrame): Pandas dataframe containing prediction data
         mlp (modules.MLPstuff.MLP): model
         columns_key (list): columns that uniquely identify a record
-        columns_data (list): list of column names used for training
-        columns_labels (list): list of column names to predict
+        cols_features (list): list of column names used for training
+        cols_labels (list): list of column names to predict
+        suffix (str): suffix of gapfilled columns (e.g. H_orig is changed to H_f_mlp per default)
         means (list, optional): List of means, must be provided if training was done on normalized data. Defaults to None.
         stds (list, optional): List of standard deviations, must be provided if training was done on normalized data. Defaults to None.
 
@@ -305,14 +377,14 @@ def gap_filling_mlp(data, mlp, columns_key, columns_data, columns_labels, means=
         raise ValueError("If means and stds are specified, mins and maxs must be None and vice versa")
     
     # identify rows where labels are NaN, but features aren't
-    mask_nan = data[columns_labels].isna().any(axis=1)
-    mask_not_nan = data[columns_data].notna().all(axis=1)
+    mask_nan = data[cols_labels].isna().any(axis=1)
+    mask_not_nan = data[cols_features].notna().all(axis=1)
 
     # Combine the masks
     combined_mask = mask_nan & mask_not_nan
 
     # data used for prediction
-    input = data[combined_mask][columns_data].reset_index(drop=True)
+    input = data[combined_mask][cols_features].reset_index(drop=True)
 
     # transform input into torch.tensor and make predictions
     input_tensor = torch.tensor(input.values, dtype=torch.float32)
@@ -333,19 +405,19 @@ def gap_filling_mlp(data, mlp, columns_key, columns_data, columns_labels, means=
         pred = mlp(input_tensor).numpy() #  Transform back to numpy 
 
     # create dataframe of predictions 
-    columns_labels_pred = [col.replace('_orig', '') + '_f_mlp'  for col in columns_labels]
-    pred = pd.DataFrame(pred, columns=columns_labels_pred)
+    cols_labels_pred = [col.replace('_orig', '') + suffix  for col in cols_labels]
 
-    
+    pred = pd.DataFrame(pred, columns=cols_labels_pred)
+
     # merge predictions onto features
     data_pred = pd.concat([input, pred], axis=1)
 
-
     # merge both dataframes
-    data_merged = data.merge(data_pred[columns_key + columns_labels_pred], how="outer", on=columns_key)
+    data_merged = data.merge(data_pred[columns_key + cols_labels_pred], how="outer", on=columns_key)
+    
 
     # now, the gapfilled columns have nan values where the original data is not nan. In this case, just take the original values
-    for col_f, col in zip(columns_labels_pred, columns_labels):
+    for col_f, col in zip(cols_labels_pred, cols_labels):
         data_merged[col_f] = data_merged[col_f].fillna(data_merged[col])
 
 
@@ -353,42 +425,43 @@ def gap_filling_mlp(data, mlp, columns_key, columns_data, columns_labels, means=
 
 
 
-def gap_filling_rf(data, model, columns_key, columns_data, columns_labels):
+def gap_filling_rf(data, model, columns_key, cols_features, cols_labels, suffix='_f_rf'):
     """Fill gaps using pretrained Random Forest model.
 
     Args:
         data (pd.DataFrame): Pandas dataframe containing prediction data
         model (_type_): RandomForestRegressor
         columns_key (list): columns that uniquely identify a record
-        columns_data (list): list of column names used for training
-        columns_labels (list): list of column names to predict
+        cols_features (list): list of column names used for training
+        cols_labels (list): list of column names to predict
+        suffix (str): suffix added to the RF gapfilled columns
 
     Returns:
         pd.DataFrame: Dataframe containing the original data and the MLP gap filled data.
     """
     # identify rows where labels are NaN, but features aren't
-    mask_nan = data[columns_labels].isna().any(axis=1)
-    mask_not_nan = data[columns_data].notna().all(axis=1)
+    mask_nan = data[cols_labels].isna().any(axis=1)
+    mask_not_nan = data[cols_features].notna().all(axis=1)
 
     # Combine the masks
     combined_mask = mask_nan & mask_not_nan
 
     # data used for prediction
-    X = data[combined_mask][columns_data].reset_index(drop=True)
+    X = data[combined_mask][cols_features].reset_index(drop=True)
 
     # create dataframe of predictions 
-    columns_labels_pred = [col.replace('_orig', '') + '_f_rf'  for col in columns_labels]
+    cols_labels_pred = [col.replace('_orig', '') + suffix  for col in cols_labels]
     y = model.predict(X)
-    y = pd.DataFrame(y, columns=columns_labels_pred)
+    y = pd.DataFrame(y, columns=cols_labels_pred)
     # merge predictions onto features
     data_pred = pd.concat([X, y], axis=1)
 
 
     # merge both dataframes
-    data_merged = data.merge(data_pred[columns_key + columns_labels_pred], how="outer", on=columns_key)
+    data_merged = data.merge(data_pred[columns_key + cols_labels_pred], how="outer", on=columns_key)
 
     # now, the gapfilled columns have nan values where the original data is not nan. In this case, just take the original values
-    for col_f, col in zip(columns_labels_pred, columns_labels):
+    for col_f, col in zip(cols_labels_pred, cols_labels):
         data_merged[col_f] = data_merged[col_f].fillna(data_merged[col])
 
     return data_merged

@@ -50,7 +50,11 @@ In MLP.py, you need to specify:
 - your initials (here you can also put any arbitrary string)
 - further training / architecture params
 
-When running the script, the model name is automatically created. The features and and labels are saved under model_saves/mlp/features and model_saves/mlp/labels, so that they can later be loaded for the gap filling. For each unique configuration of features/labels, a hash is created and added to the model name. This way, it is possible to easily train the same model architecture with different features / labels and use it directly for prediction without having to redefine anything in columns.py. If normalization is set to True, the trainset statistics (mean and standard deviation) are saved to model_saves/mlp/statistics. It is important that the trainset statistics are used also to normalize the testset or new, unlabeled data. Similarly, minmax_scaling can be used instead of normalization. If both normalization and minmax_scaling are set to True, an error is raised since it does not make sense to use both.
+When running the script, the model name is automatically created. The features and and labels are saved under model_saves/features and model_saves/labels, so that they can later be loaded for the gap filling. For each unique configuration of features/labels, a hash is created and added to the model name. This way, it is possible to easily train the same model architecture with different features / labels and use it directly for prediction without having to redefine anything in columns.py.
+
+It is tried to load the train and test data for the given feature / label combination. If none is available, the train test split is performed and saved to data/mlp_training.
+
+If normalization is set to True, the trainset statistics (mean and standard deviation) are saved to model_saves/mlp/statistics. It is important that the trainset statistics are used also to normalize the testset or new, unlabeled data. Similarly, minmax_scaling can be used instead of normalization. If both normalization and minmax_scaling are set to True, an error is raised since it does not make sense to use both.
 
 TODO: find a way around hardcoding the params
 
@@ -63,7 +67,11 @@ In RandomForest.py, you need to specify the key, features and labels that should
 
 ## Gap filling
 
-In gap_filling.py, you only need to specify the path where the MLP and the RF are saved and the path to the preprocessed data. Everything else (features, labels, model architecture etc.) is determined from the model path. The script creates two files under data/gapfilled/ :
+In gap_filling.py, you need to specify the filenames where the MLP and the RF are saved and the path to the preprocessed data. Everything else (features, labels, model architecture etc.) is determined from the model path.
+
+Note that, for a specific row with gaps, the gaps can only be filled if all the features are not NaN. Since incomingShortwaveRadiation has almost no gaps, it makes sense to train an extra MLP / RF only on the key columns and incomingShortwaveRadiation to fill the remaining gaps. In this case you also need to specify filename_rfsw and filename_mlpsw. 
+
+The script creates two files under data/gapfilled/ :
 
 - BG_gapfilled.csv
 - GW_gapfilled.csv
