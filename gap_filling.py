@@ -9,7 +9,7 @@ from modules.paths import PATH_PREPROCESSED, PATH_GAPFILLED
 
 
 # SPECIFY THESE
-filename_mlp = 'mlp_60_4_JM_minmax_52fcc9c4e6a0ebedb4141ab4010b88cb.pth' # mlp trained on important features
+filename_mlp = 'mlp_60_8_JM_minmax_6da1bac77b3bb429d326c31e92ec6b4e.pth' # mlp trained on important features
 filename_mlpsw = 'mlp_60_4_JM_minmax_b2385a49ce5fee028c3ae5c517afc0ed.pth' # mlp trained on keys + incoming shortwave radiation
 # filename_mlpsw = None
 filename_rf = 'RandomForest_model_3275b2bc40f8c30e7c7adddb373a6b7a.pkl' # rf trained on important features

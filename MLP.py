@@ -22,9 +22,8 @@ from modules.paths import PATH_MODEL_TRAINING, PATH_MODEL_SAVES_MLP, PATH_PLOTS,
 
 
 # SPECIFY THESE
-# cols_features = COLS_KEY +  ["soilHeatflux", "incomingShortwaveRadiation", "waterPressureDeficit"]
+cols_features = COLS_KEY +  ["incomingShortwaveRadiation", "soilHeatflux", "waterPressureDeficit", "airTemperature"]
 # cols_features = COLS_KEY + ["incomingShortwaveRadiation"]
-cols_features = ["incomingShortwaveRadiation"]
 cols_labels = COLS_LABELS_ALL
 normalization = False
 minmax_scaling = True
@@ -32,11 +31,11 @@ who_trained = 'JM' # author
 GPU = False
 num_epochs = 150
 lr = 10**(-3)
-patience_early_stopper = 100
+patience_early_stopper = 20
 patience_scheduler = 10
 num_hidden_units = 60
-num_hidden_layers = 4
-batch_size = 10
+num_hidden_layers = 8
+batch_size = 20
 
 
 

@@ -10,6 +10,7 @@ from modules.paths import PATH_PREPROCESSED
 
 data = pd.read_csv(PATH_PREPROCESSED + 'data_merged_with_nans.csv')
 data = data.dropna() # Drop all nans for this analyis
+data = data.drop("netRadiation", axis=1) # drop netRadiation since it is highly correlated to incomingShortwaveRadiation
 data.head()
 
 # Do the analysis for H & LE -> Drop from data
