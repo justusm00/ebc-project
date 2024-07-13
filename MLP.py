@@ -12,9 +12,9 @@ import torch.optim as optim
 
 ############# UTILITIES ############
 
-from modules.util import grab_data, train_val_splitter, data_loaders, \
-    get_hash_from_features_and_labels,model_train_test_split
-from modules.MLPstuff import run_training, MLP, test, MyReduceLROnPlateau, SingleBatchDataLoader
+from modules.util import get_hash_from_features_and_labels
+from modules.dataset import grab_data, train_val_splitter, data_loaders,train_test_splitter, SingleBatchDataLoader
+from modules.MLPstuff import run_training, MLP, test, MyReduceLROnPlateau
 from modules.columns import COLS_FEATURES_ALL, COLS_LABELS_ALL, COLS_KEY, COLS_KEY_ALT
 from modules.paths import PATH_MODEL_TRAINING, PATH_MODEL_SAVES_MLP, PATH_PLOTS, PATH_PREPROCESSED,\
     PATH_MODEL_SAVES_FEATURES, PATH_MODEL_SAVES_LABELS
@@ -22,9 +22,8 @@ from modules.paths import PATH_MODEL_TRAINING, PATH_MODEL_SAVES_MLP, PATH_PLOTS,
 
 
 # SPECIFY THESE
-cols_key = COLS_KEY # must be COLS_KEY or COLS_KEY_ALT
-cols_features = cols_key + ["incomingShortwaveRadiation", "soilHeatflux", "waterPressureDeficit", "windSpeed"]
-# cols_features = cols_key + ["incomingShortwaveRadiation"]
+# cols_features = COLS_KEY + ["incomingShortwaveRadiation", "soilHeatflux", "waterPressureDeficit", "windSpeed"]
+cols_features = COLS_KEY + ["incomingShortwaveRadiation",  "soilHeatflux"]
 
 cols_labels = COLS_LABELS_ALL
 normalization = False
@@ -42,7 +41,7 @@ batch_size = 10
 
 
 
-def train_mlp(GPU, num_epochs, lr, batch_size, cols_key, cols_features=COLS_FEATURES_ALL, 
+def train_mlp(GPU, num_epochs, lr, batch_size, cols_features=COLS_FEATURES_ALL, 
               cols_labels=COLS_LABELS_ALL,
               normalization=True, minmax_scaling=False, 
               patience_early_stopper=10, patience_scheduler=10):
@@ -62,12 +61,7 @@ def train_mlp(GPU, num_epochs, lr, batch_size, cols_key, cols_features=COLS_FEAT
         _type_: _description_
     """
     if (minmax_scaling is True ) and (normalization is True ) :
-        raise ValueError("Can only perform normalization OR minmax_scaling")
-    # check if key columns are present as features
-    for col in cols_key:
-        if col not in cols_features:
-            raise ValueError(f"Features must contain all of {cols_key}")
-        
+        raise ValueError("Can only perform normalization OR minmax_scaling")        
         
     # Create a hash based on the features and labels
     model_hash = get_hash_from_features_and_labels(cols_features=cols_features, cols_labels=cols_labels)
@@ -127,7 +121,7 @@ def train_mlp(GPU, num_epochs, lr, batch_size, cols_key, cols_features=COLS_FEAT
                                 path_test=PATH_MODEL_TRAINING + 'test_data_' + model_hash + '.csv', num_cpus=num_cpus, cols_features=cols_features, cols_labels=cols_labels, normalization=normalization, minmax_scaling=minmax_scaling)
     except:
         print("No train and test data available for given feature/label combination. Creating one ... \n")
-        model_train_test_split(path_data=PATH_PREPROCESSED + 'data_merged_with_nans.csv', 
+        train_test_splitter(path_data=PATH_PREPROCESSED + 'data_merged_with_nans.csv', 
                                cols_features=cols_features, 
                                cols_labels=cols_labels, 
                                path_save=PATH_MODEL_TRAINING, model_hash=model_hash)
@@ -232,7 +226,6 @@ if __name__ == '__main__':
               num_epochs=num_epochs,
               lr=lr,
               batch_size=batch_size,
-              cols_key=cols_key,
               cols_features=cols_features,
               cols_labels=cols_labels,
               normalization=normalization,

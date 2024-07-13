@@ -4,12 +4,20 @@ import time
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
+import pandas as pd
 
 import torch
 import torch.nn as nn
 from torch.optim.lr_scheduler import ReduceLROnPlateau
-
 import fastprogress
+from sklearn.metrics import mean_squared_error
+
+
+from modules.dataset import grab_data
+from modules.paths import PATH_MODEL_TRAINING
+
+
+
 
 # MLP definition
 class MLP(nn.Module):
@@ -126,19 +134,9 @@ class MyReduceLROnPlateau(ReduceLROnPlateau):
 
 
 
-# Function to create a sub-dataloader that only iterates over the first batch
-class SingleBatchDataLoader:
-    def __init__(self, dataloader):
-        self.batch = next(iter(dataloader))
-        
-    def __iter__(self):
-        return iter([self.batch])
-    
-    def __len__(self):
-        return 1
-        
-
 ############# TRAINING FUNCTIONS ###############
+
+
 
 # Define validation metric
 def prediction_error(y, y_pred): 
@@ -353,6 +351,65 @@ def run_training(model, optimizer, num_epochs, train_dataloader, val_dataloader,
     if plot_results:
         plot("Loss", "Loss", train_losses, val_losses, save_path=save_plots_path)
     return train_losses, val_losses
+
+
+
+
+def compute_test_loss_mlp(model, model_hash, cols_features, cols_labels, normalization, minmax_scaling,
+                           num_cpus=1, device='cpu'):
+    """Compute loss of model on test set
+
+    Args:
+        model (_type_): _description_
+        model_hash: needed to load test data
+        cols_features: features used for training
+        normalization: was training data normalized?
+        minmax_scaling: was minmax scaling applied to training data?
+        num_cpus (int, optional): _description_. Defaults to 1.
+        device (str, optional): _description_. Defaults to 'cpu'.
+
+    Raises:
+        ValueError: _description_
+    """
+     # compute test loss
+    _ , testset = grab_data(path_train=PATH_MODEL_TRAINING + 'training_data_' + model_hash + '.csv', 
+                                path_test=PATH_MODEL_TRAINING + 'test_data_' + model_hash + '.csv', 
+                                num_cpus=num_cpus, cols_features=cols_features, cols_labels=cols_labels, normalization=normalization, minmax_scaling=minmax_scaling)
+
+
+    testloader = torch.utils.data.DataLoader(testset,
+                                             batch_size=10,
+                                             shuffle=True, 
+                                             num_workers=1, pin_memory=True)
+    
+    loss = test(dataloader=testloader, model=model, device=device)
+    return loss
+
+
+
+def compute_test_loss_rf(model, cols_features, cols_labels, model_hash):
+    """Compute loss of random forest on test set
+
+    Args:
+        model (_type_): _description_
+        cols_features (_type_): _description_
+        cols_labels (_type_): _description_
+        model_hash (str): needed to load test data
+
+    Raises:
+        ValueError: _description_
+    """
+
+    data = pd.read_csv(PATH_MODEL_TRAINING + 'test_data_' + model_hash + '.csv')
+    X = data[cols_features]
+    y = data[cols_labels]
+    y_pred = model.predict(X)
+    loss = mean_squared_error(y, y_pred)
+    return loss
+
+
+
+
 
 
 

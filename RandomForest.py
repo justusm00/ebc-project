@@ -8,23 +8,22 @@ import json
 
 from modules.columns import COLS_LABELS_ALL, COLS_KEY, COLS_KEY_ALT
 from modules.paths import PATH_MODEL_TRAINING, PATH_MODEL_SAVES_RF, PATH_PREPROCESSED
-from modules.util import get_hash_from_features_and_labels, model_train_test_split
+from modules.util import get_hash_from_features_and_labels
+from modules.dataset import train_test_splitter
 
 
 # ALWAYS SPECIFY THESE
-cols_key = COLS_KEY_ALT # must be COLS_KEY or COLS_KEY_ALT
-cols_features = cols_key + ["incomingShortwaveRadiation", "soilHeatflux", "waterPressureDeficit"]
-# cols_features = cols_key + ["incomingShortwaveRadiation"]
+cols_features = COLS_KEY_ALT + ["incomingShortwaveRadiation", "soilHeatflux", "waterPressureDeficit"]
+# cols_features = COLS_KEY_ALT + ["incomingShortwaveRadiation"]
 cols_labels = COLS_LABELS_ALL
 
 
 
 
-def fit_rf(cols_key, cols_features, cols_labels):
+def fit_rf(cols_features, cols_labels):
     """Fit random forest model, print train/test MSEs and save model.
 
     Args:
-        cols_key (_type_): _description_
         cols_features (_type_): _description_
         cols_labels (_type_): _description_
         path_model_saves (_type_): _description_
@@ -32,10 +31,6 @@ def fit_rf(cols_key, cols_features, cols_labels):
     Raises:
         ValueError: _description_
     """
-    # check if key columns are present as features
-    for col in cols_key:
-        if col not in cols_features:
-            raise ValueError(f"Features must contain all of {cols_key}")
     # Create a hash based on the features and labels
     model_hash = get_hash_from_features_and_labels(cols_features=cols_features, cols_labels=cols_labels)
 
@@ -59,7 +54,7 @@ def fit_rf(cols_key, cols_features, cols_labels):
         test_data = pd.read_csv(PATH_MODEL_TRAINING + 'test_data_' + model_hash + '.csv')
     except:
         print("No train and test data available for given feature/label combination. Creating one ... \n")
-        model_train_test_split(path_data=PATH_PREPROCESSED + 'data_merged_with_nans.csv', 
+        train_test_splitter(path_data=PATH_PREPROCESSED + 'data_merged_with_nans.csv', 
                                cols_features=cols_features, 
                                cols_labels=cols_labels, 
                                path_save=PATH_MODEL_TRAINING, model_hash=model_hash)
@@ -94,4 +89,4 @@ def fit_rf(cols_key, cols_features, cols_labels):
 
 
 if __name__ == '__main__':
-    fit_rf(cols_key=cols_key, cols_features=cols_features, cols_labels=cols_labels)
+    fit_rf(cols_features=cols_features, cols_labels=cols_labels)
