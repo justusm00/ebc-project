@@ -3,9 +3,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 
-from modules.util import gap_filling_mlp, gap_filling_rf
 from modules.MLPstuff import compute_test_loss_rf, compute_test_loss_mlp
-from modules.gapfilling_util import load_mlp, load_rf
+from modules.gapfilling_util import load_mlp, load_rf, gap_filling_mlp, gap_filling_rf
 from modules.paths import PATH_PREPROCESSED, PATH_GAPFILLED
 
 
