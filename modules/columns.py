@@ -6,9 +6,16 @@ COLS_KEY_ALT = ["year", "day_of_year", "30min", "location"]
 COLS_LABELS_ALL = ["H_orig", "LE_orig"]
 
 # all possible columns that can be used as features for mlp training
-COLS_FEATURES_ALL = COLS_KEY + ["netRadiation", "incomingShortwaveRadiation",
-                                "soilHeatflux", "airPressure", 
-                                "waterPressureDeficit", "waterVaporPressure", "windSpeed", "relativeHumidity", "day_of_year"]
+COLS_FEATURES_ALL = COLS_KEY + ["netRadiation",
+                                "incomingShortwaveRadiation",
+                                "soilHeatflux",
+                                "airPressure", 
+                                "waterPressureDeficit",
+                                "waterVaporPressure",
+                                "windSpeed",
+                                "relativeHumidity",
+                                "day_of_year",
+                                "airTemperature"]
 
 # only important features
 COLS_IMPORTANT_FEATURES = COLS_KEY + ["incomingShortwaveRadiation", "soilHeatflux", "waterPressureDeficit"]

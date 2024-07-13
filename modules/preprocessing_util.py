@@ -187,6 +187,11 @@ def preprocess_meteo_data(path_raw, path_save, cols):
     df_bg_24["windSpeed"] = df_bg_24["Windgeschw_380cm"]
     df_gw_24["windSpeed"] = df_gw_24["Windgeschw_I_43m"]
 
+    df_bg_23["airTemperature"] = df_bg_23["Lufttemperatur_200cm"]
+    df_gw_23["airTemperature"] = df_gw_23["Lufttemperatur_43m"]
+    df_bg_24["airTemperature"] = df_bg_24["Lufttemperatur_200cm"]
+    df_gw_24["airTemperature"] = df_gw_24["Lufttemperatur_43m"]
+
 
     # add location column
     df_bg_23["location"] = 0

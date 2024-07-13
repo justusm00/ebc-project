@@ -23,8 +23,8 @@ from modules.paths import PATH_MODEL_TRAINING, PATH_MODEL_SAVES_MLP, PATH_PLOTS,
 
 # SPECIFY THESE
 # cols_features = COLS_KEY +  ["soilHeatflux", "incomingShortwaveRadiation", "waterPressureDeficit"]
-cols_features = COLS_KEY + ["incomingShortwaveRadiation"]
-
+# cols_features = COLS_KEY + ["incomingShortwaveRadiation"]
+cols_features = ["incomingShortwaveRadiation"]
 cols_labels = COLS_LABELS_ALL
 normalization = False
 minmax_scaling = True
