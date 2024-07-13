@@ -93,12 +93,27 @@ def preprocess_meteo_data(path_raw, path_save, cols):
     df_gw_23 = df_gw_23.drop("kurzwAusstrahlun_43m", axis=1)
 
     # convert relevant columns to float
-    df_bg_23_cols = ["Bodenwaermefluss", "kurzwEinstrahlung_300cm", "kurzwAusstrahlung_300cm",
-                "Wasserdampfdefizit_200cm", "Wasserdampfdruck_200cm", "RelativeFeuchte_200cm", "Windgeschw_380cm", "Luftdruck"]
+    df_bg_23_cols = ["Bodenwaermefluss",
+                     "kurzwEinstrahlung_300cm",
+                     "kurzwAusstrahlung_300cm",
+                     "Wasserdampfdefizit_200cm",
+                     "Wasserdampfdruck_200cm",
+                     "RelativeFeuchte_200cm",
+                     "Windgeschw_380cm",
+                     "Luftdruck",
+                     "Lufttemperatur_200cm"]
+    
     df_gw_23_cols = [f"Bodentemp_{idx}_{depth}cm" for idx in [1, 2, 3] for depth in [5, 15, 30]]
-    df_gw_23_cols.extend(["kurzwEinstrahlung_43m", "kurzwAusstrahlung_43m", "Luftdruck_43m",
-                    "Wasserdampfdefizit_43m", "Wasserdampfdruck_43m", "RelativeFeuchte_43m",
-                    "Windgeschw_I_43m", "langwEinstrahlung_43m", "langwAusstrahlung_43m"])
+    df_gw_23_cols.extend(["kurzwEinstrahlung_43m",
+                          "kurzwAusstrahlung_43m",
+                          "Luftdruck_43m",
+                          "Wasserdampfdefizit_43m",
+                          "Wasserdampfdruck_43m",
+                          "RelativeFeuchte_43m",
+                          "Windgeschw_I_43m",
+                          "langwEinstrahlung_43m",
+                          "langwAusstrahlung_43m",
+                          "Lufttemperatur_43m"])
 
     df_bg_24_cols = df_bg_23_cols.copy()
     df_gw_24_cols = df_gw_23_cols.copy()

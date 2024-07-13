@@ -5,17 +5,19 @@ COLS_KEY_ALT = ["year", "day_of_year", "30min", "location"]
 # all possible columns that can be used as labels for mlp training 
 COLS_LABELS_ALL = ["H_orig", "LE_orig"]
 
+# relevant meteo columns
+COLS_METEO = COLS_KEY + ["soilHeatflux",
+                         "airPressure",
+                         "incomingShortwaveRadiation", 
+                         "waterPressureDeficit",
+                         "waterVaporPressure",
+                         "windSpeed",
+                         "relativeHumidity",
+                         "netRadiation",
+                         "airTemperature"]
+
 # all possible columns that can be used as features for mlp training
-COLS_FEATURES_ALL = COLS_KEY + ["netRadiation",
-                                "incomingShortwaveRadiation",
-                                "soilHeatflux",
-                                "airPressure", 
-                                "waterPressureDeficit",
-                                "waterVaporPressure",
-                                "windSpeed",
-                                "relativeHumidity",
-                                "day_of_year",
-                                "airTemperature"]
+COLS_FEATURES_ALL = COLS_KEY+ ["day_of_year"] + COLS_METEO
 
 # only important features
 COLS_IMPORTANT_FEATURES = COLS_KEY + ["incomingShortwaveRadiation", "soilHeatflux", "waterPressureDeficit"]
@@ -25,7 +27,6 @@ COLS_IMPORTANT_FEATURES = COLS_KEY + ["incomingShortwaveRadiation", "soilHeatflu
 COLS_FLUXES = COLS_KEY + ["H_orig", "LE_orig", "H_f", "LE_f"]
 
 # columns to keep from meteo data
-COLS_METEO = COLS_KEY + ["soilHeatflux", "airPressure", "incomingShortwaveRadiation", 
-              "waterPressureDeficit", "waterVaporPressure", "windSpeed", "relativeHumidity", "netRadiation"]
+
 
 
