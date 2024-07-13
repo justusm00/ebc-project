@@ -17,20 +17,20 @@ from modules.dataset_util import grab_data, train_val_splitter, data_loaders,tra
 from modules.MLPstuff import run_training, MLP, test, MyReduceLROnPlateau
 from modules.columns import COLS_FEATURES_ALL, COLS_LABELS_ALL, COLS_KEY, COLS_KEY_ALT
 from modules.paths import PATH_MODEL_TRAINING, PATH_MODEL_SAVES_MLP, PATH_PLOTS, PATH_PREPROCESSED,\
-    PATH_MODEL_SAVES_FEATURES, PATH_MODEL_SAVES_LABELS
+    PATH_MODEL_SAVES_FEATURES, PATH_MODEL_SAVES_LABELS, PATH_MODEL_SAVES_STATISTICS
 
 
 
 # SPECIFY THESE
-cols_features = COLS_KEY +  ["soilHeatflux", "incomingShortwaveRadiation", "waterPressureDeficit"]
-# cols_features = COLS_KEY + ["incomingShortwaveRadiation",  "soilHeatflux"]
+# cols_features = COLS_KEY +  ["soilHeatflux", "incomingShortwaveRadiation", "waterPressureDeficit"]
+cols_features = COLS_KEY + ["incomingShortwaveRadiation"]
 
 cols_labels = COLS_LABELS_ALL
 normalization = False
 minmax_scaling = True
 who_trained = 'JM' # author
 GPU = False
-num_epochs = 2
+num_epochs = 150
 lr = 10**(-3)
 patience_early_stopper = 100
 patience_scheduler = 10
@@ -202,8 +202,8 @@ def train_mlp(GPU, num_epochs, lr, batch_size, cols_features=COLS_FEATURES_ALL,
 
     if normalization:
         # save statistics
-        model_means_path = PATH_MODEL_SAVES_MLP + 'statistics/' + model_name + '_means.npy'
-        model_stds_path = PATH_MODEL_SAVES_MLP + 'statistics/'  + model_name + '_stds.npy'
+        model_means_path = PATH_MODEL_SAVES_STATISTICS + model_hash + '_means.npy'
+        model_stds_path = PATH_MODEL_SAVES_STATISTICS  + model_hash + '_stds.npy'
         np.save(model_means_path, trainset.dataset.means.numpy())
         np.save(model_stds_path, trainset.dataset.stds.numpy())
         print(f"Saved means to {model_means_path} \n")
@@ -211,8 +211,8 @@ def train_mlp(GPU, num_epochs, lr, batch_size, cols_features=COLS_FEATURES_ALL,
 
     if minmax_scaling:
         # save statistics
-        model_maxs_path = PATH_MODEL_SAVES_MLP + 'statistics/' + model_name + '_maxs.npy'
-        model_mins_path = PATH_MODEL_SAVES_MLP + 'statistics/'  + model_name + '_mins.npy'
+        model_maxs_path = PATH_MODEL_SAVES_STATISTICS + model_hash + '_maxs.npy'
+        model_mins_path = PATH_MODEL_SAVES_STATISTICS + model_hash  + '_mins.npy'
         np.save(model_maxs_path, trainset.dataset.maxs.numpy())
         np.save(model_mins_path, trainset.dataset.mins.numpy())
         print(f"Saved maxs to {model_maxs_path} \n")

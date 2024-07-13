@@ -5,7 +5,7 @@ import pickle
 import pandas as pd
 
 from modules.paths import PATH_MODEL_SAVES_MLP,\
-    PATH_MODEL_SAVES_RF, PATH_MODEL_SAVES_FEATURES, PATH_MODEL_SAVES_LABELS
+    PATH_MODEL_SAVES_RF, PATH_MODEL_SAVES_FEATURES, PATH_MODEL_SAVES_LABELS, PATH_MODEL_SAVES_STATISTICS    
 from modules.util import extract_mlp_details_from_name
 from modules.MLPstuff import MLP
 
@@ -183,15 +183,15 @@ def load_mlp(filename, device='cpu'):
     # load statistics
     if normalization:
         # load statistics
-        model_means_path = PATH_MODEL_SAVES_MLP + 'statistics/' + name + '_means.npy'
-        model_stds_path = PATH_MODEL_SAVES_MLP + 'statistics/' + name + '_stds.npy'
+        model_means_path = PATH_MODEL_SAVES_STATISTICS + model_hash + '_means.npy'
+        model_stds_path = PATH_MODEL_SAVES_STATISTICS + model_hash  + '_stds.npy'
         trainset_means = np.load(model_means_path)
         trainset_stds = np.load(model_stds_path)
 
 
     if minmax_scaling:
-        model_maxs_path = PATH_MODEL_SAVES_MLP + 'statistics/' + name + '_maxs.npy'
-        model_mins_path = PATH_MODEL_SAVES_MLP + 'statistics/' + name + '_mins.npy'
+        model_maxs_path = PATH_MODEL_SAVES_STATISTICS + model_hash + '_maxs.npy'
+        model_mins_path = PATH_MODEL_SAVES_STATISTICS + model_hash + '_mins.npy'
         trainset_maxs = np.load(model_maxs_path)
         trainset_mins = np.load(model_mins_path)
 
