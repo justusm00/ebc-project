@@ -22,8 +22,8 @@ from modules.paths import PATH_MODEL_TRAINING, PATH_MODEL_SAVES_MLP, PATH_PLOTS,
 
 
 # SPECIFY THESE
-# cols_features = COLS_KEY + ["incomingShortwaveRadiation", "soilHeatflux", "waterPressureDeficit", "windSpeed"]
-cols_features = COLS_KEY + ["incomingShortwaveRadiation",  "soilHeatflux"]
+cols_features = COLS_KEY +  ["soilHeatflux", "incomingShortwaveRadiation", "waterPressureDeficit"]
+# cols_features = COLS_KEY + ["incomingShortwaveRadiation",  "soilHeatflux"]
 
 cols_labels = COLS_LABELS_ALL
 normalization = False
@@ -61,8 +61,8 @@ def train_mlp(GPU, num_epochs, lr, batch_size, cols_features=COLS_FEATURES_ALL,
         _type_: _description_
     """
     # sort features and labels
-    cols_features.sort_values()
-    cols_labels.sort_values()
+    cols_features = sorted(cols_features)
+    cols_labels = sorted(cols_labels)
     if (minmax_scaling is True ) and (normalization is True ) :
         raise ValueError("Can only perform normalization OR minmax_scaling")        
         

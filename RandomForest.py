@@ -32,8 +32,8 @@ def fit_rf(cols_features, cols_labels):
         ValueError: _description_
     """
     # sort features and labels
-    cols_features.sort_values()
-    cols_labels.sort_values()
+    cols_features = sorted(cols_features)
+    cols_labels = sorted(cols_labels)
     # Create a hash based on the features and labels
     model_hash = get_hash_from_features_and_labels(cols_features=cols_features, cols_labels=cols_labels)
 
