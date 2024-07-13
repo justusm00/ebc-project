@@ -9,7 +9,7 @@ import json
 from modules.columns import COLS_LABELS_ALL, COLS_KEY, COLS_KEY_ALT
 from modules.paths import PATH_MODEL_TRAINING, PATH_MODEL_SAVES_RF, PATH_PREPROCESSED
 from modules.util import get_hash_from_features_and_labels
-from modules.dataset import train_test_splitter
+from modules.dataset_util import train_test_splitter
 
 
 # ALWAYS SPECIFY THESE

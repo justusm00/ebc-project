@@ -13,7 +13,7 @@ import fastprogress
 from sklearn.metrics import mean_squared_error
 
 
-from modules.dataset import grab_data
+from modules.dataset_util import grab_data
 from modules.paths import PATH_MODEL_TRAINING
 
 

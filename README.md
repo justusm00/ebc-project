@@ -42,7 +42,6 @@ Run script preprocessing_pipeline.py. This creates the following files:
 ## MLP Training
 
 In MLP.py, you need to specify:
-- key used for merging (must be either COLS_KEY or COLS_KEY_ALT from columns.py)
 - features
 - labels
 - normalization T/F
@@ -61,7 +60,7 @@ TODO: find a way around hardcoding the params
 
 ## Random Forest Training
 
-In RandomForest.py, you need to specify the key, features and labels that should be used for training. The features can be different from the ones used for the MLP, but the labels should be the same. The script fits the random forest to the test data using some hardcoded parameters (feel free to change). Similar to the MLP training, a hash is created based on the features and labels and the model is saved to model_saves/rf/ using this hash. 
+In RandomForest.py, you need to specify the features and labels that should be used for training. The features can be different from the ones used for the MLP, but the labels should be the same. The script fits the random forest to the training data using some hardcoded parameters (feel free to change). Similar to the MLP training, a hash is created based on the features and labels and the model is saved to model_saves/rf/ using this hash. 
 
 
 

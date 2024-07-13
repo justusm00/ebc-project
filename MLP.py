@@ -13,7 +13,7 @@ import torch.optim as optim
 ############# UTILITIES ############
 
 from modules.util import get_hash_from_features_and_labels
-from modules.dataset import grab_data, train_val_splitter, data_loaders,train_test_splitter, SingleBatchDataLoader
+from modules.dataset_util import grab_data, train_val_splitter, data_loaders,train_test_splitter, SingleBatchDataLoader
 from modules.MLPstuff import run_training, MLP, test, MyReduceLROnPlateau
 from modules.columns import COLS_FEATURES_ALL, COLS_LABELS_ALL, COLS_KEY, COLS_KEY_ALT
 from modules.paths import PATH_MODEL_TRAINING, PATH_MODEL_SAVES_MLP, PATH_PLOTS, PATH_PREPROCESSED,\

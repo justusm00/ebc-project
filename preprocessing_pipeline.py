@@ -1,4 +1,4 @@
-from modules.preprocessing import preprocess_flux_data, preprocess_meteo_data, merge_data
+from modules.preprocessing_util import preprocess_flux_data, preprocess_meteo_data, merge_data
 from modules.paths import PATH_RAW, PATH_PREPROCESSED
 from modules.columns import COLS_FLUXES, COLS_METEO, COLS_FEATURES_ALL, COLS_LABELS_ALL
 
