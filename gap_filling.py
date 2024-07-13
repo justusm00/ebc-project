@@ -124,11 +124,13 @@ def fill_gaps(path_data,
 
     print("Total number of records:", data.shape[0])
 
-    for col_mlp, col_rf in zip(cols_gapfilled_mlp, cols_gapfilled_rf):
+    for col_mlp, col_rf, col_mds in zip(cols_gapfilled_mlp, cols_gapfilled_rf, cols_gapfilled_mds):
         data[col_mlp] = df_mlp[col_mlp]
         data[col_rf] = df_rf[col_rf]
         print(f"Number of NaNs in {col_mlp}: {data[data[col_mlp].isna()].shape[0]}")
         print(f"Number of NaNs in {col_rf}: {data[data[col_rf].isna()].shape[0]}")
+        print(f"Number of NaNs in {col_mds}: {data[data[col_mds].isna()].shape[0]}")
+
 
         if filename_mlpsw:
             data[col_mlp] = data[col_mlp].fillna(df_mlpsw[col_mlp])

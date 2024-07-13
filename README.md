@@ -38,6 +38,7 @@ Run pip install -r requirements.txt
 Run script preprocessing_pipeline.py. This creates the following files: 
 - data_merged_with_nans.csv, flux_data_preprocessed.csv and meteo_data_preprocessed.csv under PATH_PREPROCESSED
 - test_data.csv and training_data.csv under PATH_MODEL_TRAINING
+The columns that should be gapfilled are assumed to have the format COL_NAME_orig. If you want to gapfill columns that don't end on _orig, you need to modify their column names in the preprocessing script.
 
 ## MLP Training
 
