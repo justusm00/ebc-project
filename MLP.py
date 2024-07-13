@@ -60,6 +60,9 @@ def train_mlp(GPU, num_epochs, lr, batch_size, cols_features=COLS_FEATURES_ALL,
     Returns:
         _type_: _description_
     """
+    # sort features and labels
+    cols_features.sort_values()
+    cols_labels.sort_values()
     if (minmax_scaling is True ) and (normalization is True ) :
         raise ValueError("Can only perform normalization OR minmax_scaling")        
         

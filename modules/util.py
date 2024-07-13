@@ -107,10 +107,10 @@ def get_hash_from_features_and_labels(cols_features, cols_labels):
     """
     # Convert the list to a sorted tuple to ensure order doesn't matter
     list_conc = cols_features + cols_labels
-    sorted_list = tuple(sorted(list_conc))
+    tuple_list = tuple(list_conc)
     
     # Create a hash from the sorted tuple
-    list_str = str(sorted_list)  # Convert the sorted tuple to a string
+    list_str = str(tuple_list)  # Convert the sorted tuple to a string
     return hashlib.md5(list_str.encode()).hexdigest()  # Use MD5 hash
 
 
