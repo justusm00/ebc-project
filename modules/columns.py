@@ -18,7 +18,16 @@ COLS_METEO = COLS_KEY + ["soilHeatflux",
                          "soilTemperature"]
 
 # all possible columns that can be used as features for mlp training
-COLS_FEATURES_ALL = COLS_KEY+ ["day_of_year"] + COLS_METEO
+COLS_FEATURES_ALL = COLS_KEY+ ["day_of_year",
+                               "soilHeatflux",
+                                "airPressure",
+                                "incomingShortwaveRadiation", 
+                                "waterPressureDeficit",
+                                "waterVaporPressure",
+                                "windSpeed",
+                                "relativeHumidity",
+                                "airTemperature",
+                                "soilTemperature"]
 
 # only important features
 COLS_IMPORTANT_FEATURES = COLS_KEY + ["incomingShortwaveRadiation", "soilHeatflux", "waterPressureDeficit"]

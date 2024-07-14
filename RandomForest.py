@@ -13,7 +13,8 @@ from modules.dataset_util import train_test_splitter
 
 
 # ALWAYS SPECIFY THESE
-cols_features = COLS_KEY_ALT + ["incomingShortwaveRadiation", "soilHeatflux", "waterPressureDeficit", "airTemperature"]
+cols_features = ["incomingShortwaveRadiation", "location", "soilTemperature",
+                 "windSpeed", "airTemperature", "30min", "day_of_year"]
 #cols_features = COLS_KEY_ALT + ["incomingShortwaveRadiation"]
 cols_labels = COLS_LABELS_ALL
 

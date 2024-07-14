@@ -22,7 +22,8 @@ from modules.paths import PATH_MODEL_TRAINING, PATH_MODEL_SAVES_MLP, PATH_PLOTS,
 
 
 # SPECIFY THESE
-cols_features = COLS_KEY +  ["incomingShortwaveRadiation", "soilHeatflux", "waterPressureDeficit", "airTemperature"]
+cols_features = ["incomingShortwaveRadiation", "location", "soilTemperature",
+                 "windSpeed", "airTemperature", "30min", "day_of_year"]
 # cols_features = COLS_KEY + ["incomingShortwaveRadiation"]
 cols_labels = COLS_LABELS_ALL
 normalization = False
