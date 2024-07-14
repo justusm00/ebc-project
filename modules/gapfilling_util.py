@@ -124,13 +124,12 @@ def merge_predictions_on_data(data, pred, cols_features, cols_labels, suffix):
     # merge predictions onto features
     data_pred = pd.concat([data, pred], axis=1)
 
-    # replace gapfilled values with original values where available
-    for col_f, col in zip(cols_labels_pred, cols_labels):
-        data_pred[col_f] = data_pred.apply(replace_filled_with_original, axis=1, args=(col, col_f))
-
-
     # make sure that predictions are na if one or more features are na
     data_pred.loc[data_pred[cols_features].isna().any(axis=1), cols_labels_pred] = pd.NA
+
+    # replace values with original values where available
+    for col_f, col in zip(cols_labels_pred, cols_labels):
+        data_pred[col_f] = data_pred.apply(replace_filled_with_original, axis=1, args=(col, col_f))
 
     return data_pred
 

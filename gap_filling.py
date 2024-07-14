@@ -17,6 +17,7 @@ filename_rfsw = 'RandomForest_model_8a3d1dac5976d21608c4c058e206b3ee.pkl' # rf t
 # filename_rfsw = None
 
 path_data = PATH_PREPROCESSED + 'data_merged_with_nans.csv'
+print_test_loss = False
 
 
 
@@ -27,6 +28,7 @@ def fill_gaps(path_data,
               filename_rfsw=None,
               suffix_mlp='_f_mlp',
               suffix_rf='_f_rf',
+              print_test_loss=True,
               diurnal_fill=None):
     """Perform gapfilling on data using pretrained mlp. Optionally, use MLP and Rf trained only on keys and incoming shortwave radiation to fill gaps where no other meteo data is available.
 
@@ -36,23 +38,16 @@ def fill_gaps(path_data,
         filename_rf (str): name of file containing RF parameters
         filename_mlpsw (str): name of file containing the MLP trained only on shortwave radiation and keys (optional)
         filename_rfsw (str): name of file containing the RF trained only on shortwave radiation and keys (optional)
+        suffix_mlp (str): suffix added to mlp gapfilled columns (optional, defaults to '_f_mlp')
+        suffix_rf (str): suffix added to rf gapfilled columns (optional, defaults to '_f_rf')
+        print_test_loss (bool): whether or not test loss should be computed and printed (optional, defaults to True)
 
     """
     rf, hash_rf, cols_features_rf, cols_labels_rf = load_rf(filename_rf)
 
 
-    # print RF test loss
-    loss_test_rf = compute_test_loss_rf(rf, cols_features_rf, cols_labels_rf, hash_rf)
-    print(f"Test MSE for RF trained on {cols_features_rf}: {loss_test_rf:.2f}")
-
     if filename_rfsw:
         rfsw, hash_rfsw, cols_features_rfsw, cols_labels_rfsw = load_rf(filename_rfsw)
-
-
-        # print RF test loss
-        loss_test_rfsw = compute_test_loss_rf(rfsw, cols_features_rfsw, cols_labels_rfsw, hash_rfsw)
-        print(f"Test MSE for RF trained on {cols_features_rfsw}: {loss_test_rfsw:.2f}")
-
 
 
 
@@ -60,24 +55,11 @@ def fill_gaps(path_data,
     # load MLPs
     mlp, cols_features_mlp, cols_labels_mlp, hash_mlp, normalization_mlp, minmax_scaling_mlp, trainset_means,\
         trainset_stds, trainset_mins, trainset_maxs  = load_mlp(filename_mlp)
-    loss_test_mlp = compute_test_loss_mlp(mlp,
-                                          hash_mlp,
-                                          cols_features_mlp,
-                                          cols_labels_mlp,
-                                          normalization_mlp,
-                                          minmax_scaling_mlp)
-    print(f"Test MSE for MLP trained on {cols_features_mlp}: {loss_test_mlp:.2f}")
+
 
     if filename_mlpsw:
         mlpsw, cols_features_mlpsw, cols_labels_mlpsw, hash_mlpsw, normalization_mlpsw, minmax_scaling_mlpsw, \
             trainset_means_sw, trainset_stds_sw, trainset_mins_sw, trainset_maxs_sw  = load_mlp(filename_mlpsw)
-        loss_test_mlpsw = compute_test_loss_mlp(mlpsw,
-                                                hash_mlpsw,
-                                                cols_features_mlpsw,
-                                                cols_labels_mlpsw,
-                                                normalization_mlpsw,
-                                                minmax_scaling_mlpsw)
-        print(f"Test MSE for MLP trained on {cols_features_mlpsw}: {loss_test_mlpsw:.2f}")
 
 
 
@@ -89,6 +71,38 @@ def fill_gaps(path_data,
         
     # now only use single variable for labels
     cols_labels = cols_labels_rf
+
+    if print_test_loss:
+        # print RF test loss
+        loss_test_rf = compute_test_loss_rf(rf,
+                                            cols_features_rf,
+                                            cols_labels_rf,
+                                            hash_rf)
+        print(f"Test MSE for RF trained on {cols_features_rf}: {loss_test_rf:.2f}")
+        # print MLP test loss
+        loss_test_mlp = compute_test_loss_mlp(mlp,
+                                        hash_mlp,
+                                        cols_features_mlp,
+                                        cols_labels_mlp,
+                                        normalization_mlp,
+                                        minmax_scaling_mlp)
+        print(f"Test MSE for MLP trained on {cols_features_mlp}: {loss_test_mlp:.2f}")
+        if filename_rfsw:
+            # print RFSW test loss
+            loss_test_rfsw = compute_test_loss_rf(rfsw, cols_features_rfsw, cols_labels_rfsw, hash_rfsw)
+            print(f"Test MSE for RF trained on {cols_features_rfsw}: {loss_test_rfsw:.2f}")
+        if filename_mlpsw:
+            loss_test_mlpsw = compute_test_loss_mlp(mlpsw,
+                                                hash_mlpsw,
+                                                cols_features_mlpsw,
+                                                cols_labels_mlpsw,
+                                                normalization_mlpsw,
+                                                minmax_scaling_mlpsw)
+            print(f"Test MSE for MLP trained on {cols_features_mlpsw}: {loss_test_mlpsw:.2f}")
+
+
+
+
 
       
     # load data
@@ -169,4 +183,4 @@ def fill_gaps(path_data,
 
 
 if __name__ == '__main__':
-    fill_gaps(path_data=path_data, filename_mlp=filename_mlp, filename_rf=filename_rf, filename_mlpsw=filename_mlpsw, filename_rfsw=filename_rfsw)
+    fill_gaps(path_data=path_data, filename_mlp=filename_mlp, filename_rf=filename_rf, filename_mlpsw=filename_mlpsw, filename_rfsw=filename_rfsw, print_test_loss=print_test_loss)
