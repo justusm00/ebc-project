@@ -39,6 +39,7 @@ COLS_FLUXES = COLS_KEY + ["H_orig",
                           "H_f",
                           "LE_f",
                           "CO2",
-                          "Ustar"]
+                          "Ustar",
+                          "NEE_orig"]
 
 

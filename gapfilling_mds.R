@@ -5,7 +5,7 @@ EddyData <- subset(EddyData, location == 0)
 # filter for 2024
 EddyData <- subset(EddyData, year > 2023)
 old_names <- c("year", "day_of_year", "X30min",
-              "CO2", "LE_orig", "H_orig", "incomingShortwaveRadiation",
+              "NEE_orig", "LE_orig", "H_orig", "incomingShortwaveRadiation",
               "airTemperature", "soilTemperature", "relativeHumidity", "waterPressureDeficit", "Ustar")
 EddyData <- EddyData[, old_names]
 new_names <- c("Year", "DoY", "Hour", "NEE", "LE", "H", "Rg", "Tair", "Tsoil", "rH", "VPD", "Ustar")
@@ -22,8 +22,8 @@ EddyDataWithPosix <- EddyData %>%
 #+++ with all variables needed for processing later
 EProc <- sEddyProc$new(
   'DE-Tha', EddyDataWithPosix, c('NEE','H','LE','Rg','Tair','VPD', 'Ustar'))
-#Location of DE-Tharandt
-EProc$sSetLocationInfo(LatDeg = 51.0, LongDeg = 13.6, TimeZoneHour = 1)  
+#Location of DE-Göttingen
+EProc$sSetLocationInfo(LatDeg = 51.5, LongDeg = 10, TimeZoneHour = 1)  
 #
 #++ Fill NEE gaps with MDS gap filling algorithm (without prior ustar filtering)
 EProc$sMDSGapFill('H', FillAll = FALSE)#
