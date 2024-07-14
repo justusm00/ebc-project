@@ -24,7 +24,7 @@ COLS_IMPORTANT_FEATURES = COLS_KEY + ["incomingShortwaveRadiation", "soilHeatflu
 
 # columns to keep from flux data
 # allowed columns: "H_orig", "LE_orig", "H_f", "LE_f", 'CO2', 'H2O', 'Ustar', 'Reco'
-COLS_FLUXES = COLS_KEY + ["H_orig", "LE_orig", "H_f", "LE_f"]
+COLS_FLUXES = COLS_KEY + ["H_orig", "LE_orig", "H_f", "LE_f", "CO2", "Ustar"]
 
 # columns to keep from meteo data
 
