@@ -181,6 +181,10 @@ __pycache__/
 # checkpoint files
 checkpoint.pt
 
+# R files
+.RData
+.Rhistory
+
 # other
 *.npy
 !model_saves/mlp/statistics/*.npy

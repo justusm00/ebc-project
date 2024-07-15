@@ -91,29 +91,34 @@ def preprocess_meteo_data(path_raw, path_save, cols):
     # fix spelling error in df_gw_23
     df_gw_23["kurzwAusstrahlung_43m"] = df_gw_23["kurzwAusstrahlun_43m"]
     df_gw_23 = df_gw_23.drop("kurzwAusstrahlun_43m", axis=1)
+    
+    # change bodentemp columns name for df_bg_23
+    for idx in [1, 2, 3]:
+        df_bg_23[f"Bodentemp_{idx}_30cm"] = df_bg_23[f"Bodentemp_30cm_{idx}"] 
+        df_bg_23 = df_bg_23.drop(f"Bodentemp_30cm_{idx}", axis=1)
 
     # convert relevant columns to float
-    df_bg_23_cols = ["Bodenwaermefluss",
-                     "kurzwEinstrahlung_300cm",
-                     "kurzwAusstrahlung_300cm",
-                     "Wasserdampfdefizit_200cm",
-                     "Wasserdampfdruck_200cm",
-                     "RelativeFeuchte_200cm",
-                     "Windgeschw_380cm",
-                     "Luftdruck",
-                     "Lufttemperatur_200cm"]
-    
-    df_gw_23_cols = [f"Bodentemp_{idx}_{depth}cm" for idx in [1, 2, 3] for depth in [5, 15, 30]]
-    df_gw_23_cols.extend(["kurzwEinstrahlung_43m",
-                          "kurzwAusstrahlung_43m",
-                          "Luftdruck_43m",
-                          "Wasserdampfdefizit_43m",
-                          "Wasserdampfdruck_43m",
-                          "RelativeFeuchte_43m",
-                          "Windgeschw_I_43m",
-                          "langwEinstrahlung_43m",
-                          "langwAusstrahlung_43m",
-                          "Lufttemperatur_43m"])
+    df_bg_23_cols = [f"Bodentemp_{idx}_30cm"
+                     for idx in [1, 2, 3] ] + ["Bodenwaermefluss",
+                                                "kurzwEinstrahlung_300cm",
+                                                "kurzwAusstrahlung_300cm",
+                                                "Wasserdampfdefizit_200cm",
+                                                "Wasserdampfdruck_200cm",
+                                                "RelativeFeuchte_200cm",
+                                                "Windgeschw_380cm",
+                                                "Luftdruck",
+                                                "Lufttemperatur_200cm"]
+    df_gw_23_cols = [f"Bodentemp_{idx}_{depth}cm" for idx in [1, 2, 3]
+                     for depth in [5, 15, 30]] + ["kurzwEinstrahlung_43m",
+                                                "kurzwAusstrahlung_43m",
+                                                "Luftdruck_43m",
+                                                "Wasserdampfdefizit_43m",
+                                                "Wasserdampfdruck_43m",
+                                                "RelativeFeuchte_43m",
+                                                "Windgeschw_I_43m",
+                                                "langwEinstrahlung_43m",
+                                                "langwAusstrahlung_43m",
+                                                "Lufttemperatur_43m"]
 
     df_bg_24_cols = df_bg_23_cols.copy()
     df_gw_24_cols = df_gw_23_cols.copy()
@@ -157,12 +162,23 @@ def preprocess_meteo_data(path_raw, path_save, cols):
 
 
 
-
+    # get soil temperature for forest
     for idx in [1, 2, 3]:
         for depth in [5, 15, 30]:
             df_gw_23[f"soilTemperature_{idx}_{depth}cm"] = df_gw_23[f"Bodentemp_{idx}_{depth}cm"]
             df_gw_24[f"soilTemperature_{idx}_{depth}cm"] = df_gw_24[f"Bodentemp_{idx}_{depth}cm"]
             df_gw_24[f"soilMoisture_{idx}_{depth}cm"] = df_gw_24[f"Bodenfeuchte_{idx}_{depth}cm"]
+
+
+    # get mean soil temperature (can be used as training feature)
+    df_gw_23["soilTemperature"] = df_gw_23[[f"Bodentemp_{idx}_30cm" for idx in [1, 2, 3]]].mean(axis=1)
+    df_gw_24["soilTemperature"] = df_gw_24[[f"Bodentemp_{idx}_30cm" for idx in [1, 2, 3]]].mean(axis=1)
+    df_bg_23["soilTemperature"] = df_bg_23[[f"Bodentemp_{idx}_30cm" for idx in [1, 2, 3]]].mean(axis=1)
+    df_bg_24["soilTemperature"] = df_bg_24[[f"Bodentemp_{idx}_30cm" for idx in [1, 2, 3]]].mean(axis=1)
+
+
+
+
 
 
     # compute soil heatflux for df_gw_24 and df_gw_23

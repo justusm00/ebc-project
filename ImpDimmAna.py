@@ -7,6 +7,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.multioutput import MultiOutputRegressor
 from modules.paths import PATH_PREPROCESSED
+from modules.columns import COLS_FEATURES_ALL
 
 data = pd.read_csv(PATH_PREPROCESSED + 'data_merged_with_nans.csv')
 data = data.dropna() # Drop all nans for this analyis
@@ -15,7 +16,7 @@ data.head()
 
 # Do the analysis for H & LE -> Drop from data
 y = data[['H_orig', 'LE_orig']]
-X = data.drop(columns=['H_orig', 'LE_orig', 'H_f', 'LE_f', 'year', 'month', 'day', '30min'])
+X = data[[col for col in COLS_FEATURES_ALL if col not in ["day", "month"]]]
 X.head()
 
 # Train-test-split and fitting the Decision trees
