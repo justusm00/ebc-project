@@ -16,16 +16,16 @@ names(EddyData) <- new_names
 EddyData$VPD <- fCalcVPDfromRHandTair(EddyData$rH, EddyData$Tair)
 #+++ Add time stamp in POSIX time format
 EddyDataWithPosix <- EddyData %>% 
-  filterLongRuns("NEE") %>% 
+  filterLongRuns("H") %>% 
   fConvertTimeToPosix('YDH', Year = 'Year', Day = 'DoY', Hour = 'Hour')
 #+++ Initalize R5 reference class sEddyProc for processing of eddy data
 #+++ with all variables needed for processing later
 EProc <- sEddyProc$new(
-  'DE-Tha', EddyDataWithPosix, c('NEE','H','LE','Rg','Tair','VPD', 'Ustar'))
+  'DE-Goe', EddyDataWithPosix, c('NEE','H','LE','Rg','Tair','VPD', 'Ustar'))
 #Location of DE-Göttingen
 EProc$sSetLocationInfo(LatDeg = 51.5, LongDeg = 10, TimeZoneHour = 1)  
 #
-#++ Fill NEE gaps with MDS gap filling algorithm (without prior ustar filtering)
+#++ Fill H gaps with MDS gap filling algorithm (without prior ustar filtering)
 EProc$sMDSGapFill('H', FillAll = FALSE)#
 
 
