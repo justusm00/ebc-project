@@ -32,9 +32,11 @@
 ## Install required libraries
 
 To install the required python libraries, run
+
 pip install -r requirements.txt
 
 To install the required R packages, run
+
 source("requirements.R") in RStudio
 
 ## Preprocessing
