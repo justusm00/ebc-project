@@ -123,26 +123,32 @@ def grab_data(path_train, path_test, num_cpus, cols_features=None, cols_labels=N
     return trainset, testset
 
 
-def train_test_splitter(path_data, cols_features, cols_labels, path_save, model_hash, test_size=0.2, 
-                           random_state=42):
+def train_test_splitter(path_data, cols_features, cols_labels, model_hash, path_save=None, test_size=0.2, 
+                           random_state=42, verbose=True):
     """Perform random train test split and drop nan values. This needs to be done for each unique combination of features and labels since the data availability depends on this combination. The train and test data are save to path_save and identified by a unique hash generated from the feature-label-combination.
 
     Args:
         df (_type_): _description_
         cols_features (_type_): _description_
         cols_labels (_type_): _description_
-        path_save (_type_): _description_
+        path_save (_type_): path where data will be stored. If set to None, don't save datasets and just return them
         model_hash (str): identifying combination of features and labels
         test_size (float, optional): _description_. Defaults to 0.2.
         random_state (int, optional): _description_. Defaults to 42.
+
+    Returns:
+        _type_: trainset
+        _type_: testset
     """
     # load data
     df = pd.read_csv(path_data)
-    print(f"Number of records in original data: {df.shape[0]}")
+    if verbose:
+        print(f"Number of records in original data: {df.shape[0]}")
     # drop nan values
     df = df[cols_features + cols_labels]
     df = df.dropna()
-    print(f"Number of records after dropping rows with nan values in feature / label columns: {df.shape[0]}")
+    if verbose:
+        print(f"Number of records after dropping rows with nan values in feature / label columns: {df.shape[0]}")
     # Define features and target
     X = df[cols_features]  # Features
     y = df[cols_labels]  # Target
@@ -151,15 +157,18 @@ def train_test_splitter(path_data, cols_features, cols_labels, path_save, model_
     df_train = pd.concat([X_train, y_train], axis=1)
     df_test = pd.concat([X_test, y_test], axis=1)
 
-    path_train = path_save + 'training_data_' + model_hash + '.csv'
-    path_test = path_save + 'test_data_' + model_hash + '.csv'
-    # save as csv
-    df_train.to_csv(path_train, index=False)
-    df_test.to_csv(path_test, index=False)
 
-    print(f"Saved train data to {path_train} \n")
-    print(f"Saved test data to {path_test} \n")
-    return 
+    if path_save:
+        path_train = path_save + 'training_data_' + model_hash + '.csv'
+        path_test = path_save + 'test_data_' + model_hash + '.csv'
+        # save as csv
+        df_train.to_csv(path_train, index=False)
+        df_test.to_csv(path_test, index=False)
+        if verbose:
+            print(f"Saved train data to {path_train} \n")
+            print(f"Saved test data to {path_test} \n")    
+
+    return df_train, df_test
 
 
 # dataset Splitter 

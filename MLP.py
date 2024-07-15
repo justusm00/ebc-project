@@ -124,10 +124,11 @@ def train_mlp(GPU, num_epochs, lr, batch_size, cols_features=COLS_FEATURES_ALL,
                                 path_test=PATH_MODEL_TRAINING + 'test_data_' + model_hash + '.csv', num_cpus=num_cpus, cols_features=cols_features, cols_labels=cols_labels, normalization=normalization, minmax_scaling=minmax_scaling)
     except:
         print("No train and test data available for given feature/label combination. Creating one ... \n")
-        train_test_splitter(path_data=PATH_PREPROCESSED + 'data_merged_with_nans.csv', 
+        _, _ = train_test_splitter(path_data=PATH_PREPROCESSED + 'data_merged_with_nans.csv', 
                                cols_features=cols_features, 
                                cols_labels=cols_labels, 
-                               path_save=PATH_MODEL_TRAINING, model_hash=model_hash)
+                               model_hash=model_hash,
+                               path_save=PATH_MODEL_TRAINING)
         trainset, testset = grab_data(path_train=PATH_MODEL_TRAINING + 'training_data_' + model_hash + '.csv', 
                                 path_test=PATH_MODEL_TRAINING + 'test_data_' + model_hash + '.csv', num_cpus=num_cpus, cols_features=cols_features, cols_labels=cols_labels, normalization=normalization, minmax_scaling=minmax_scaling)
 
