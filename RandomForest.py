@@ -62,17 +62,24 @@ def fit_rf(cols_features, cols_labels, save_results=True, verbose=True):
             json.dump(cols_labels, file)
 
     try:
-        training_data = pd.read_csv(PATH_MODEL_TRAINING + 'training_data_' + model_hash + '.csv')
-        test_data = pd.read_csv(PATH_MODEL_TRAINING + 'test_data_' + model_hash + '.csv')
+        with open(PATH_MODEL_TRAINING + 'indices_' + model_hash + '.pkl', 'rb') as file:
+            indices = pickle.load(file)
+        train_indices = indices['train_indices']
+        test_indices = indices['test_indices']
+
     except:
         if verbose:
             print("No train and test data available for given feature/label combination. Creating one ... \n")
-        training_data, test_data = train_test_splitter(path_data=PATH_PREPROCESSED + 'data_merged_with_nans.csv', 
+        train_indices, test_indices = train_test_splitter(path_data=PATH_PREPROCESSED + 'data_merged_with_nans.csv', 
                                cols_features=cols_features, 
                                cols_labels=cols_labels, 
                                model_hash=model_hash,
-                               path_save=path_save,
-                               verbose=verbose)
+                               path_save=PATH_MODEL_TRAINING)
+        
+    data = pd.read_csv(PATH_PREPROCESSED + 'data_merged_with_nans.csv')
+
+    training_data = data.loc[train_indices]
+    test_data = data.loc[test_indices]
 
 
     X_train = training_data[cols_features]

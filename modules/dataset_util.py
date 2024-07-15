@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from modules.util import transform_timestamp
+import pickle
 
 
 
@@ -89,12 +90,12 @@ class SingleBatchDataLoader:
 ############# DATASET FUNCTIONS #############
 
 # Data loader
-def grab_data(path_train, path_test, num_cpus, cols_features=None, cols_labels=None, normalization=False, minmax_scaling=False):
+def grab_data(path_data, path_indices, num_cpus, cols_features=None, cols_labels=None, normalization=False, minmax_scaling=False):
     """Loads training and test data from respective directories. 
 
     Args:
-        path_train (_type_): _description_
-        path_test (_type_): _description_
+        path_data (_type_): _description_
+        path_indices 
         num_cpus (_type_): _description_
         cols_features (_type_, optional): _description_. Defaults to None.
         cols_labels (_type_, optional): _description_. Defaults to None.
@@ -109,8 +110,18 @@ def grab_data(path_train, path_test, num_cpus, cols_features=None, cols_labels=N
         raise ValueError("Can only perform normalization OR minmax_scaling")
 
     # load data
-    trainset = pd.read_csv(path_train)
-    testset = pd.read_csv(path_test)
+    # Load from the file
+    with open(path_indices, 'rb') as file:
+        indices = pickle.load(file)
+
+    train_indices = indices['train_indices']
+    test_indices = indices['test_indices']
+
+
+    data = pd.read_csv(path_data)
+
+    trainset = data.loc[train_indices]
+    testset = data.loc[test_indices]
 
     # Select data and labels
     if cols_features == None:
@@ -159,6 +170,7 @@ def grab_data(path_train, path_test, num_cpus, cols_features=None, cols_labels=N
     return trainset, testset
 
 
+
 def train_test_splitter(path_data, cols_features, cols_labels, model_hash, path_save=None, test_size=0.2, 
                            random_state=42, verbose=True):
     """Perform random train test split and drop nan values. This needs to be done for each unique combination of features and labels since the data availability depends on this combination. The train and test data are save to path_save and identified by a unique hash generated from the feature-label-combination.
@@ -180,31 +192,38 @@ def train_test_splitter(path_data, cols_features, cols_labels, model_hash, path_
     df = pd.read_csv(path_data)
     if verbose:
         print(f"Number of records in original data: {df.shape[0]}")
+    
     # drop nan values
     df = df[cols_features + cols_labels]
     df = df.dropna()
     if verbose:
-        print(f"Number of records after dropping rows with nan values in feature / label columns: {df.shape[0]}")
+        print(f"Number of records after dropping rows with nan values in feature/label columns: {df.shape[0]}")
+    
     # Define features and target
     X = df[cols_features]  # Features
     y = df[cols_labels]  # Target
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=random_state)
-    # concatenate again
-    df_train = pd.concat([X_train, y_train], axis=1)
-    df_test = pd.concat([X_test, y_test], axis=1)
+    
+    # Split the data
+    train_indices, test_indices = train_test_split(df.index, test_size=test_size, random_state=random_state)
+    
+
+    # Data to be saved
+    indices = {
+        'train_indices': train_indices,
+        'test_indices': test_indices
+    }
 
 
+    
     if path_save:
-        path_train = path_save + 'training_data_' + model_hash + '.csv'
-        path_test = path_save + 'test_data_' + model_hash + '.csv'
-        # save as csv
-        df_train.to_csv(path_train, index=False)
-        df_test.to_csv(path_test, index=False)
+        # Save to a file
+        file_path = path_save + 'indices_' + model_hash + '.pkl'
+        with open(file_path, 'wb') as file:
+            pickle.dump(indices, file)
         if verbose:
-            print(f"Saved train data to {path_train} \n")
-            print(f"Saved test data to {path_test} \n")    
+            print(f"Saved train data to {file_path} \n") 
 
-    return df_train, df_test
+    return train_indices, test_indices
 
 
 # dataset Splitter 
