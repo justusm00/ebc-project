@@ -3,7 +3,7 @@ import torch
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
-from util import transform_timestamp
+from modules.util import transform_timestamp
 
 
 
@@ -257,7 +257,7 @@ def data_loaders(trainset, valset, testset, batch_size=64, num_cpus=1):
     return trainloader, valloader, testloader
 
 
-def TimeSeries_SplitLoader(series_data, series_targets):
+def TimeSeries_SplitLoader(series_data, series_targets, window_size):
     test_split_size = 0.9
     val_split_size = 0.8
 
