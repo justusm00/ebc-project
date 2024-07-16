@@ -30,7 +30,7 @@ normalization = False
 minmax_scaling = True
 who_trained = 'JM' # author
 GPU = False
-num_epochs = 150
+num_epochs = 10
 lr = 10**(-3)
 patience_early_stopper = 20
 patience_scheduler = 10
@@ -120,8 +120,13 @@ def train_mlp(GPU, num_epochs, lr, batch_size, cols_features=COLS_FEATURES_ALL,
 
     # try to load train and test data. If not available, create train / test split for this combination of features and labels
     try:
-        trainset, testset = grab_data(path_train=PATH_MODEL_TRAINING + 'training_data_' + model_hash + '.csv', 
-                                path_test=PATH_MODEL_TRAINING + 'test_data_' + model_hash + '.csv', num_cpus=num_cpus, cols_features=cols_features, cols_labels=cols_labels, normalization=normalization, minmax_scaling=minmax_scaling)
+        trainset, testset = grab_data(path_data=PATH_PREPROCESSED+'data_merged_with_nans.csv',
+                                      path_indices=PATH_MODEL_TRAINING + 'indices_' + model_hash + '.pkl',
+                                      num_cpus=num_cpus,
+                                      cols_features=cols_features,
+                                      cols_labels=cols_labels,
+                                      normalization=normalization,
+                                      minmax_scaling=minmax_scaling)
     except:
         print("No train and test data available for given feature/label combination. Creating one ... \n")
         _, _ = train_test_splitter(path_data=PATH_PREPROCESSED + 'data_merged_with_nans.csv', 
@@ -129,9 +134,14 @@ def train_mlp(GPU, num_epochs, lr, batch_size, cols_features=COLS_FEATURES_ALL,
                                cols_labels=cols_labels, 
                                model_hash=model_hash,
                                path_save=PATH_MODEL_TRAINING)
-        trainset, testset = grab_data(path_train=PATH_MODEL_TRAINING + 'training_data_' + model_hash + '.csv', 
-                                path_test=PATH_MODEL_TRAINING + 'test_data_' + model_hash + '.csv', num_cpus=num_cpus, cols_features=cols_features, cols_labels=cols_labels, normalization=normalization, minmax_scaling=minmax_scaling)
-
+        
+        trainset, testset = grab_data(path_data=PATH_PREPROCESSED+'data_merged_with_nans.csv',
+                                      path_indices=PATH_MODEL_TRAINING + 'indices_' + model_hash + '.pkl',
+                                      num_cpus=num_cpus,
+                                      cols_features=cols_features,
+                                      cols_labels=cols_labels,
+                                      normalization=normalization,
+                                      minmax_scaling=minmax_scaling)
 
     trainset, valset = train_val_splitter(trainset, val_frac=0.2)
 

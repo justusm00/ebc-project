@@ -14,7 +14,7 @@ from sklearn.metrics import mean_squared_error
 
 
 from modules.dataset_util import grab_data
-from modules.paths import PATH_MODEL_TRAINING
+from modules.paths import PATH_MODEL_TRAINING, PATH_PREPROCESSED
 
 
 
@@ -372,9 +372,14 @@ def compute_test_loss_mlp(model, model_hash, cols_features, cols_labels, normali
         ValueError: _description_
     """
      # compute test loss
-    _ , testset = grab_data(path_train=PATH_MODEL_TRAINING + 'training_data_' + model_hash + '.csv', 
-                                path_test=PATH_MODEL_TRAINING + 'test_data_' + model_hash + '.csv', 
-                                num_cpus=num_cpus, cols_features=cols_features, cols_labels=cols_labels, normalization=normalization, minmax_scaling=minmax_scaling)
+
+    _, testset = grab_data(path_data=PATH_PREPROCESSED+'data_merged_with_nans.csv',
+                                path_indices=PATH_MODEL_TRAINING + 'indices_' + model_hash + '.pkl',
+                                num_cpus=num_cpus,
+                                cols_features=cols_features,
+                                cols_labels=cols_labels,
+                                normalization=normalization,
+                                minmax_scaling=minmax_scaling)
 
 
     testloader = torch.utils.data.DataLoader(testset,
