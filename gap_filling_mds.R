@@ -46,7 +46,7 @@ processEddyData <- function(df, column_name) {
   EProc$sSetLocationInfo(LatDeg = 51.5, LongDeg = 10, TimeZoneHour = 1)
   
   # Fill gaps with MDS gap filling algorithm
-  EProc$sMDSGapFill(column_name, FillAll = TRUE)
+  EProc$sMDSGapFill(column_name, FillAll = FALSE)
   
   # Export gap filled and partitioned data to standard data frame
   FilledEddyData <- EProc$sExportResults()
@@ -78,7 +78,7 @@ compute_mse <- function(EddyData) {
 
 
 mses <- c()
-for (i in 1:100) {
+for (i in 1:1000) {
   mses <- c(mses, compute_mse(EddyData))
 }
 
