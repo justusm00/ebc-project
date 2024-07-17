@@ -13,10 +13,10 @@ from modules.dataset_util import train_test_splitter
 
 
 # ALWAYS SPECIFY THESE
-cols_features = COLS_IMPORTANT_FEATURES
-# cols_features = ["incomingShortwaveRadiation", "location", "day_of_year", "30min"]
+# cols_features = COLS_IMPORTANT_FEATURES
+cols_features = ["incomingShortwaveRadiation", "location", "day_of_year", "30min"]
 cols_labels = COLS_LABELS_ALL
-use_all_data = True
+use_all_data = False
 
 
 def fit_rf(cols_features, cols_labels, use_all_data=True, save_results=True, verbose=True):
@@ -45,8 +45,10 @@ def fit_rf(cols_features, cols_labels, use_all_data=True, save_results=True, ver
     # create model name
     if use_all_data:
         model_name = f'RF_{model_hash}'
+        test_size = 0.2
     else:
         model_name = f'RF_AGF_{model_hash}'
+        test_size = 0.01 # very small because we don't really need a testset
 
     if verbose:
         print("\n")
@@ -85,7 +87,8 @@ def fit_rf(cols_features, cols_labels, use_all_data=True, save_results=True, ver
                             cols_labels=cols_labels, 
                             model_hash=model_hash,
                             use_all_data=use_all_data,
-                            path_save=PATH_MODEL_TRAINING)
+                            path_save=PATH_MODEL_TRAINING,
+                            test_size=test_size)
         
     training_data = data.loc[train_indices]
     test_data = data.loc[test_indices]

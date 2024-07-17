@@ -23,8 +23,8 @@ from modules.paths import PATH_MODEL_TRAINING, PATH_MODEL_SAVES_MLP, PATH_PLOTS,
 
 
 # SPECIFY THESE
-# cols_features = COLS_IMPORTANT_FEATURES
-cols_features = ["incomingShortwaveRadiation", "location", "day_of_year", "30min"]
+cols_features = COLS_IMPORTANT_FEATURES
+# cols_features = ["incomingShortwaveRadiation", "location", "day_of_year", "30min"]
 cols_labels = COLS_LABELS_ALL
 use_all_data = False # if false, don't train on data flagged as artificial gaps
 normalization = False
@@ -81,6 +81,9 @@ def train_mlp(GPU, num_epochs, lr, batch_size, cols_features=COLS_FEATURES_ALL,
 
     if not use_all_data:
         model_name = model_name + "_AGF"
+        test_size = 0.01 # very small since we do not really need a testset
+    else:
+        test_size = 0.2
 
 
     model_name = model_name + "_" + model_hash
@@ -145,7 +148,8 @@ def train_mlp(GPU, num_epochs, lr, batch_size, cols_features=COLS_FEATURES_ALL,
                                cols_labels=cols_labels, 
                                model_hash=model_hash,
                                use_all_data=use_all_data,
-                               path_save=PATH_MODEL_TRAINING)
+                               path_save=PATH_MODEL_TRAINING,
+                               test_size=test_size)
         
         trainset, testset = grab_data(model_hash=model_hash,
                                       num_cpus=num_cpus,
