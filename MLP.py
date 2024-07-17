@@ -2,6 +2,7 @@
 import os
 import numpy as np
 import json
+import pandas as pd
 
 
 import torch
@@ -138,7 +139,8 @@ def train_mlp(GPU, num_epochs, lr, batch_size, cols_features=COLS_FEATURES_ALL,
                                       minmax_scaling=minmax_scaling)
     except:
         print("No train and test data available for given feature/label combination. Creating one ... \n")
-        _, _ = train_test_splitter(path_data=PATH_PREPROCESSED + 'data_merged_with_nans.csv', 
+        data = pd.read_csv(PATH_PREPROCESSED + 'data_merged_with_nans.csv')
+        _, _ = train_test_splitter(df=data,
                                cols_features=cols_features, 
                                cols_labels=cols_labels, 
                                model_hash=model_hash,

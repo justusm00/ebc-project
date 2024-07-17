@@ -16,7 +16,7 @@ from modules.dataset_util import train_test_splitter
 cols_features = COLS_IMPORTANT_FEATURES
 # cols_features = ["incomingShortwaveRadiation", "location", "day_of_year", "30min"]
 cols_labels = COLS_LABELS_ALL
-use_all_data = False
+use_all_data = True
 
 
 def fit_rf(cols_features, cols_labels, use_all_data=True, save_results=True, verbose=True):
@@ -80,7 +80,7 @@ def fit_rf(cols_features, cols_labels, use_all_data=True, save_results=True, ver
     except:
         if verbose:
             print("No train and test data available for given feature/label combination. Creating one ... \n")
-        train_indices, test_indices = train_test_splitter(path_data=PATH_PREPROCESSED + 'data_merged_with_nans.csv', 
+        train_indices, test_indices = train_test_splitter(df=data,
                             cols_features=cols_features, 
                             cols_labels=cols_labels, 
                             model_hash=model_hash,

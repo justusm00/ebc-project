@@ -169,7 +169,7 @@ def grab_data(model_hash, num_cpus, use_all_data=True, cols_features=None, cols_
 
 
 
-def train_test_splitter(path_data, cols_features, cols_labels, model_hash, use_all_data=True, path_save=None, test_size=0.2, 
+def train_test_splitter(df, cols_features, cols_labels, model_hash, use_all_data=True, path_save=None, test_size=0.2, 
                            random_state=42, verbose=True):
     """Perform random train test split and drop nan values. This needs to be done for each unique combination of features and labels since the data availability depends on this combination. The train and test data are save to path_save and identified by a unique hash generated from the feature-label-combination.
 
@@ -186,8 +186,6 @@ def train_test_splitter(path_data, cols_features, cols_labels, model_hash, use_a
         _type_: trainset
         _type_: testset
     """
-    # load data
-    df = pd.read_csv(path_data)
     if verbose:
         print(f"Number of records in original data: {df.shape[0]}")
 
@@ -202,9 +200,6 @@ def train_test_splitter(path_data, cols_features, cols_labels, model_hash, use_a
     if verbose:
         print(f"Number of records after dropping rows with nan values in feature/label columns: {df.shape[0]}")
     
-    # Define features and target
-    X = df[cols_features]  # Features
-    y = df[cols_labels]  # Target
     
     # Split the data
     train_indices, test_indices = train_test_split(df.index, test_size=test_size, random_state=random_state)
