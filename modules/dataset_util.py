@@ -3,6 +3,7 @@ import torch
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
+from modules.paths import PATH_MODEL_TRAINING, PATH_PREPROCESSED
 from modules.util import transform_timestamp
 import pickle
 
@@ -90,7 +91,7 @@ class SingleBatchDataLoader:
 ############# DATASET FUNCTIONS #############
 
 # Data loader
-def grab_data(path_data, path_indices, num_cpus, cols_features=None, cols_labels=None, normalization=False, minmax_scaling=False):
+def grab_data(model_hash, num_cpus, use_all_data=True, cols_features=None, cols_labels=None, normalization=False, minmax_scaling=False):
     """Loads training and test data from respective directories. 
 
     Args:
@@ -109,13 +110,10 @@ def grab_data(path_data, path_indices, num_cpus, cols_features=None, cols_labels
     if (minmax_scaling is True ) and (normalization is True ) :
         raise ValueError("Can only perform normalization OR minmax_scaling")
 
-    # load data
-    # Load from the file
-    with open(path_indices, 'rb') as file:
-        indices = pickle.load(file)
 
-    train_indices = indices['train_indices']
-    test_indices = indices['test_indices']
+    train_indices, test_indices = get_train_test_indices(use_all_data, model_hash)
+
+    path_data = PATH_PREPROCESSED + 'data_merged_with_nans.csv'
 
 
     data = pd.read_csv(path_data)
@@ -171,7 +169,7 @@ def grab_data(path_data, path_indices, num_cpus, cols_features=None, cols_labels
 
 
 
-def train_test_splitter(path_data, cols_features, cols_labels, model_hash, path_save=None, test_size=0.2, 
+def train_test_splitter(path_data, cols_features, cols_labels, model_hash, use_all_data=True, path_save=None, test_size=0.2, 
                            random_state=42, verbose=True):
     """Perform random train test split and drop nan values. This needs to be done for each unique combination of features and labels since the data availability depends on this combination. The train and test data are save to path_save and identified by a unique hash generated from the feature-label-combination.
 
@@ -192,7 +190,12 @@ def train_test_splitter(path_data, cols_features, cols_labels, model_hash, path_
     df = pd.read_csv(path_data)
     if verbose:
         print(f"Number of records in original data: {df.shape[0]}")
-    
+
+    if not use_all_data:
+        df = df[df["artificial_gap"] == 0]
+        print(f"Number of records after filtering out artificial gaps: {df.shape[0]}")
+
+
     # drop nan values
     df = df[cols_features + cols_labels]
     df = df.dropna()
@@ -217,7 +220,11 @@ def train_test_splitter(path_data, cols_features, cols_labels, model_hash, path_
     
     if path_save:
         # Save to a file
-        file_path = path_save + 'indices_' + model_hash + '.pkl'
+        if use_all_data:
+            file_path = path_save + 'indices_' + model_hash + '.pkl'
+        else:
+            file_path = path_save + 'indices_AGF_' + model_hash + '.pkl'
+
         with open(file_path, 'wb') as file:
             pickle.dump(indices, file)
         if verbose:
@@ -363,3 +370,21 @@ def grab_filled_data(features):
     series_targets = series[["H_f_mlp", "LE_f_mlp"]]
 
     return series_data, series_targets
+
+
+
+def get_train_test_indices(use_all_data, model_hash):
+    # determine path to train / test indices
+    if use_all_data:
+        path_indices = PATH_MODEL_TRAINING + 'indices_' + model_hash + '.pkl'
+    else:
+        path_indices = PATH_MODEL_TRAINING + 'indices_AGF_' + model_hash + '.pkl'
+    # load data
+    # Load from the file
+    with open(path_indices, 'rb') as file:
+        indices = pickle.load(file)
+
+    train_indices = indices['train_indices']
+    test_indices = indices['test_indices']
+
+    return train_indices, test_indices

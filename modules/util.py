@@ -79,6 +79,7 @@ def extract_mlp_details_from_name(model_name):
     model_hash = parts[-1]
     normalization = 'norm' in parts
     minmax_scaling = 'minmax' in parts
+    use_all_data = not 'AGF' in parts
     if (minmax_scaling is True ) and (normalization is True ) :
         raise ValueError("Can only perform normalization OR minmax_scaling")
     # load RF features and labels
@@ -89,7 +90,7 @@ def extract_mlp_details_from_name(model_name):
 
 
     
-    return num_hidden_units, num_hidden_layers, model_hash, cols_features, cols_labels, normalization, minmax_scaling
+    return num_hidden_units, num_hidden_layers, model_hash, cols_features, cols_labels, normalization, minmax_scaling, use_all_data
 
 
 
@@ -125,4 +126,5 @@ def get_month_day_from_day_of_year(row):
     day_of_year = int(row['day_of_year'])
     date_obj = datetime.date(year, 1, 1) + datetime.timedelta(days=day_of_year - 1)
     return pd.Series([date_obj.month, date_obj.day])
+
 

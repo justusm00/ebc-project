@@ -160,7 +160,7 @@ def load_mlp(filename, device='cpu'):
     name = filename.rstrip('.pth')
 
     num_hidden_units, num_hidden_layers, model_hash,\
-        cols_features, cols_labels, normalization, minmax_scaling = extract_mlp_details_from_name(name)
+        cols_features, cols_labels, normalization, minmax_scaling, use_all_data = extract_mlp_details_from_name(name)
     
     path = PATH_MODEL_SAVES_MLP + filename
 
@@ -179,23 +179,33 @@ def load_mlp(filename, device='cpu'):
     mlp = MLP(len(cols_features), len(cols_labels), num_hidden_units=num_hidden_units, num_hidden_layers=num_hidden_layers)
     mlp.load_state_dict(torch.load(path, map_location=torch.device(device)))
 
+        
+
     # load statistics
     if normalization:
         # load statistics
-        model_means_path = PATH_MODEL_SAVES_STATISTICS + model_hash + '_means.npy'
-        model_stds_path = PATH_MODEL_SAVES_STATISTICS + model_hash  + '_stds.npy'
+        if use_all_data:
+            model_means_path = PATH_MODEL_SAVES_STATISTICS + model_hash + '_means.npy'
+            model_stds_path = PATH_MODEL_SAVES_STATISTICS + model_hash  + '_stds.npy'
+        else:
+            model_means_path = PATH_MODEL_SAVES_STATISTICS + model_hash + '_AGF_means.npy'
+            model_stds_path = PATH_MODEL_SAVES_STATISTICS + model_hash  + '_AGF_stds.npy'
         trainset_means = np.load(model_means_path)
         trainset_stds = np.load(model_stds_path)
 
 
     if minmax_scaling:
-        model_maxs_path = PATH_MODEL_SAVES_STATISTICS + model_hash + '_maxs.npy'
-        model_mins_path = PATH_MODEL_SAVES_STATISTICS + model_hash + '_mins.npy'
+        if use_all_data:
+            model_maxs_path = PATH_MODEL_SAVES_STATISTICS + model_hash + '_maxs.npy'
+            model_mins_path = PATH_MODEL_SAVES_STATISTICS + model_hash + '_mins.npy'
+        else:
+            model_maxs_path = PATH_MODEL_SAVES_STATISTICS + model_hash + '_AGF_maxs.npy'
+            model_mins_path = PATH_MODEL_SAVES_STATISTICS + model_hash + '_AGF_mins.npy'
         trainset_maxs = np.load(model_maxs_path)
         trainset_mins = np.load(model_mins_path)
 
 
-    return mlp, cols_features, cols_labels, model_hash, normalization, minmax_scaling, trainset_means, trainset_stds, trainset_mins, trainset_maxs
+    return mlp, cols_features, cols_labels, model_hash, normalization, minmax_scaling, trainset_means, trainset_stds, trainset_mins, trainset_maxs, use_all_data
 
 
 def load_rf(filename):
@@ -208,8 +218,11 @@ def load_rf(filename):
         _type_: _description_
     """
     name = filename.rstrip('.pkl')
-    model_hash = name.split('_')[-1]
+    parts = name.split('_')
+    model_hash = parts[-1]
     path = PATH_MODEL_SAVES_RF + filename
+
+    use_all_data = not 'AGF' in parts
 
     # load random forest model
     with open(path, 'rb') as f:
@@ -220,4 +233,4 @@ def load_rf(filename):
         cols_features = json.load(file)
     with open(PATH_MODEL_SAVES_LABELS + model_hash + '.json', 'r') as file:
         cols_labels = json.load(file)
-    return rf, model_hash, cols_features, cols_labels
+    return rf, model_hash, cols_features, cols_labels, use_all_data

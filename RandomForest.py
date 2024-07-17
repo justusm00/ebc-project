@@ -6,28 +6,26 @@ import pickle
 import json
 
 
-from modules.columns import COLS_FEATURES_ALL, COLS_LABELS_ALL
+from modules.columns import COLS_FEATURES_ALL, COLS_LABELS_ALL, COLS_IMPORTANT_FEATURES
 from modules.paths import PATH_MODEL_TRAINING, PATH_MODEL_SAVES_RF, PATH_PREPROCESSED
 from modules.util import get_hash_from_features_and_labels
 from modules.dataset_util import train_test_splitter
 
 
 # ALWAYS SPECIFY THESE
-# cols_features = ["incomingShortwaveRadiation", "location", "soilTemperature",
-#                  "windSpeed", "airTemperature", "30min", "day_of_year"]
-cols_features = COLS_FEATURES_ALL
-#cols_features = ["30min"]
+cols_features = COLS_IMPORTANT_FEATURES
+# cols_features = ["incomingShortwaveRadiation", "location", "day_of_year", "30min"]
 cols_labels = COLS_LABELS_ALL
+use_all_data = False
 
 
-
-
-def fit_rf(cols_features, cols_labels, save_results=True, verbose=True):
+def fit_rf(cols_features, cols_labels, use_all_data=True, save_results=True, verbose=True):
     """Fit random forest model, print train/test MSEs and save model.
 
     Args:
         cols_features (_type_): _description_
         cols_labels (_type_): _description_
+        random_train_test_split: if True, create train / test set randomly. If False, use artificial gaps as test set and rest as train set
         path_model_saves (_type_): _description_
         save_train_test_data (bool): if set to True, the model and the train / test data are saved
 
@@ -45,7 +43,10 @@ def fit_rf(cols_features, cols_labels, save_results=True, verbose=True):
     model_hash = get_hash_from_features_and_labels(cols_features=cols_features, cols_labels=cols_labels)
 
     # create model name
-    model_name = f'RandomForest_model_{model_hash}'
+    if use_all_data:
+        model_name = f'RF_{model_hash}'
+    else:
+        model_name = f'RF_AGF_{model_hash}'
 
     if verbose:
         print("\n")
@@ -61,8 +62,17 @@ def fit_rf(cols_features, cols_labels, save_results=True, verbose=True):
         with open(labels_json, 'w') as file:
             json.dump(cols_labels, file)
 
+
+    data = pd.read_csv(PATH_PREPROCESSED + 'data_merged_with_nans.csv')
+
+
     try:
-        with open(PATH_MODEL_TRAINING + 'indices_' + model_hash + '.pkl', 'rb') as file:
+        if use_all_data:
+            data_path = PATH_MODEL_TRAINING + 'indices_' + model_hash + '.pkl'
+        else:
+            data_path = PATH_MODEL_TRAINING + 'indices_AGF_' + model_hash + '.pkl'
+
+        with open(data_path, 'rb') as file:
             indices = pickle.load(file)
         train_indices = indices['train_indices']
         test_indices = indices['test_indices']
@@ -71,15 +81,15 @@ def fit_rf(cols_features, cols_labels, save_results=True, verbose=True):
         if verbose:
             print("No train and test data available for given feature/label combination. Creating one ... \n")
         train_indices, test_indices = train_test_splitter(path_data=PATH_PREPROCESSED + 'data_merged_with_nans.csv', 
-                               cols_features=cols_features, 
-                               cols_labels=cols_labels, 
-                               model_hash=model_hash,
-                               path_save=PATH_MODEL_TRAINING)
+                            cols_features=cols_features, 
+                            cols_labels=cols_labels, 
+                            model_hash=model_hash,
+                            use_all_data=use_all_data,
+                            path_save=PATH_MODEL_TRAINING)
         
-    data = pd.read_csv(PATH_PREPROCESSED + 'data_merged_with_nans.csv')
-
     training_data = data.loc[train_indices]
     test_data = data.loc[test_indices]
+    
 
 
     X_train = training_data[cols_features]
@@ -242,5 +252,5 @@ def stepwise_forward_selection_rf(max_features=None, tol=0.01):
 
 
 if __name__ == '__main__':
-    fit_rf(cols_features=cols_features, cols_labels=cols_labels, save_results=True, verbose=True)
+    fit_rf(cols_features=cols_features, cols_labels=cols_labels, use_all_data=use_all_data, save_results=True, verbose=True)
     # stepwise_forward_selection_rf()
