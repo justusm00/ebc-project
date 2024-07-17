@@ -1,0 +1,368 @@
+import os
+import time
+
+import numpy as np
+import seaborn as sns
+import matplotlib.pyplot as plt
+import pandas as pd
+
+import torch
+import torch.nn as nn
+from torch.optim.lr_scheduler import ReduceLROnPlateau
+import fastprogress
+from sklearn.metrics import mean_squared_error
+
+from modules.dataset_util import grab_data
+from modules.paths import PATH_MODEL_TRAINING, PATH_PREPROCESSED
+from modules.MLPstuff import EarlyStopper
+
+
+class LSTMModel(nn.Module):
+    def __init__(self, input_size, hidden_size, num_layers, output_size):
+        super(LSTMModel, self).__init__()
+        self.hidden_size = hidden_size
+        self.num_layers = num_layers
+        self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True)
+        self.fc = nn.Linear(hidden_size, output_size)
+        
+    def forward(self, x):
+        #x = x.transpose(1,2) # Input Features are supposed to be in the last dimension
+        h0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size).to(x.device)
+        c0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size).to(x.device)
+        out, _ = self.lstm(x, (h0, c0))
+        out = self.fc(out[:, -1, :])  # Use the last time step's output for prediction
+        return out
+    
+
+
+
+def train(dataloader, optimizer, model, master_bar, device, loss_fn = nn.MSELoss()):
+    """Run one training epoch.
+
+    Args:
+        dataloade: dataloader containing trainingdata
+        optimizer: Torch optimizer object
+        model: the model that is trained
+        loss_fn: the loss function to be used -> nn.MSELoss()
+        master_bar: Will be iterated over for each
+            epoch to draw batches and display training progress
+
+    Returns:
+        Mean epoch loss and accuracy
+    """
+    losses = []  # Use a list to store individual batch losses
+
+    for x, y in fastprogress.progress_bar(dataloader, parent=master_bar):
+        optimizer.zero_grad()
+        model.train()
+
+        # Forward pass
+        y_pred = model(x.to(device, non_blocking=True))
+
+        # Compute loss
+        batch_loss = loss_fn(y_pred, y.to(device, non_blocking=True))
+
+        # Backward pass
+        batch_loss.backward()
+
+        # Gradient Clipping
+        nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+
+        optimizer.step()
+
+        # Save the batch loss for logging purposes
+        losses.append(batch_loss.item())
+
+    # Calculate the mean loss for the epoch
+    mean_loss = np.mean(losses)
+
+    # Return the mean loss for the epoch
+    return mean_loss
+
+
+
+
+
+def validate(dataloader, model, master_bar, device, loss_fn=nn.MSELoss()):
+    """Compute loss and total prediction error on validation set.
+
+    Args:
+        dataloader: dataloader containing validation data
+        model (nn.Module): the model to train
+        loss_fn: the loss function to be used, defaults to MSELoss
+        master_bar (fastprogress.master_bar): Will be iterated over to draw 
+            batches and show validation progress
+
+    Returns:
+        Mean loss and total prediction error on validation set
+    """
+    epoch_loss = []
+
+    model.eval()
+    with torch.no_grad():
+        for x, y in fastprogress.progress_bar(dataloader, parent=master_bar):
+            # make a prediction on validation set
+            y_pred = model(x.to(device, non_blocking=True))
+
+            # Compute loss
+            loss = loss_fn(y_pred, y.to(device, non_blocking=True))
+
+            # For plotting the train loss, save it for each sample
+            epoch_loss.append(loss.item())
+
+    # Return the mean loss, the accuracy and the confusion matrix
+    return np.mean(epoch_loss)
+
+
+def test(dataloader, model, device, loss_fn=nn.MSELoss()):
+    """Compute loss on testset.
+
+    Args:
+        dataloader: dataloader containing validation data
+        model (nn.Module): the model to train
+        loss_fn: the loss function to be used, defaults to MSELoss
+
+    Returns:
+        Mean loss 
+    """
+    epoch_loss = []
+
+    model.eval()
+    with torch.no_grad():
+        for x, y in dataloader:
+            # make a prediction on test set
+            y_pred = model(x.to(device, non_blocking=True))
+
+            # Compute loss
+            loss = loss_fn(y_pred, y.to(device, non_blocking=True))
+
+            # For plotting the train loss, save it for each sample
+            epoch_loss.append(loss.item())
+
+    # Return the mean loss, the accuracy and the confusion matrix
+    return np.mean(epoch_loss)
+
+
+
+def plot(title, label, train_results, val_results, yscale='linear', save_path=None):
+    """Plot learning curves.
+
+    Args:
+        title: Title of plot
+        label: y-axis label
+        train_results: Vector containing training results over epochs
+        val_results: vector containing validation results over epochs
+        yscale: Defines how the y-axis scales
+        save_path: Optional path for saving file
+    """
+    
+    epochs = np.arange(len(train_results)) + 1
+    
+    sns.set(style='ticks')
+
+    plt.plot(epochs, train_results, epochs, val_results, linestyle='dashed', marker='o')
+    legend = ['Train results', 'Validation results']
+        
+    plt.legend(legend)
+    plt.xlabel('Epoch')
+    plt.ylabel(label)
+    plt.yscale(yscale)
+    plt.title(title)
+    
+    sns.despine(trim=True, offset=5)
+    plt.title(title, fontsize=15)
+    if save_path:
+        plt.savefig(save_path, dpi=600)
+    plt.show()
+
+
+
+
+
+
+
+def run_training(model, optimizer, num_epochs, train_dataloader, val_dataloader, device, 
+                 loss_fn=nn.MSELoss(), patience=1, early_stopper=None, scheduler=None, verbose=False, plot_results=True, save_plots_path=None):
+    """Run model training.
+
+    Args:
+        model: The model to be trained
+        optimizer: The optimizer used during training
+        loss_fn: Torch loss function for training -> nn.MSELoss()
+        num_epochs: How many epochs the model is trained for
+        train_dataloader:  dataloader containing training data
+        val_dataloader: dataloader containing validation data
+        verbose: Whether to print information on training progress
+
+    Returns:
+        lists containing  losses and total prediction errors per epoch for training and validation
+    """
+    start_time = time.time()
+    master_bar = fastprogress.master_bar(range(num_epochs))
+    train_losses, val_losses = [],[]
+
+    if early_stopper:
+        ES = EarlyStopper(verbose=verbose, patience = patience)
+
+    # initialize old loss value varibale (choose something very large)
+    val_loss_old = 1e6
+
+    for epoch in master_bar:
+        # Train the model
+        epoch_train_loss = train(dataloader=train_dataloader, optimizer=optimizer, model=model, 
+                                                 master_bar=master_bar, device=device, loss_fn=loss_fn)
+        # Validate the model
+        epoch_val_loss = validate(val_dataloader, model, master_bar, device, loss_fn)
+
+        # Save loss and acc for plotting
+        train_losses.append(epoch_train_loss)
+        val_losses.append(epoch_val_loss)
+        
+        if verbose:
+            master_bar.write(f'Train loss: {epoch_train_loss:.2f}, val loss: {epoch_val_loss:.2f}')
+
+
+        if early_stopper and epoch != 0:
+            ES.check_criterion(epoch_val_loss, val_loss_old)
+            if ES.early_stop:
+                master_bar.write("Early stopping")
+                model = ES.load_checkpoint()
+                break
+            if ES.counter > 0:
+                master_bar.write(f"Early stop counter: {ES.counter} / {patience}")
+
+        # Save smallest loss
+        if early_stopper and epoch_val_loss < val_loss_old:
+            val_loss_old = epoch_val_loss
+            ES.save_model(model)
+            
+        if scheduler:
+            scheduler.step(epoch_val_loss)
+
+    time_elapsed = np.round(time.time() - start_time, 0).astype(int)
+    print(f'Finished training after {time_elapsed} seconds.')
+
+    if plot_results:
+        plot("Loss", "Loss", train_losses, val_losses, save_path=save_plots_path)
+    return train_losses, val_losses
+
+
+
+
+
+def extract_subseries(df, window_size, features, labels, index=0, n_aug=0):
+    subseries = []
+
+    for i in range(len(df) - window_size + 1):  # Go over all possible series
+        window = df.iloc[i:i+window_size].copy(deep=True)  # Extract window through slicing
+
+        # Make sure that none of the important features of the window contain NaNs
+        if window[features + labels].isna().sum().sum() == 0:
+            window['series_id'] = index
+            subseries.append( window.reset_index(drop=True) )
+            index += 1
+
+            # Now create the augmentations by adding Gaussian noise to them
+            for _ in range(n_aug):
+                window_aug = window.copy(deep=True)
+
+                for lab in labels:
+                    noise = np.random.normal(0, 1, size=window_size)
+                    window_aug.loc[:, lab] += noise  # Use .loc to avoid SettingWithCopyWarning
+
+                window_aug['series_id'] = index
+                subseries.append( window_aug.reset_index(drop=True) )
+                index += 1
+
+    # Convert the list of subseries into a DataFrame and return
+    return pd.concat(subseries, ignore_index=True), index
+
+def grab_series_data(window_size, features, labels, n_aug=0):
+    data = pd.read_csv('data/preprocessed/data_merged_with_nans.csv')
+
+    # First only take in the data in time of the recordings
+    BG = pd.read_csv('data/gapfilled/BG_gapfilled.csv')
+    GW = pd.read_csv('data/gapfilled/GW_gapfilled.csv')
+
+    # Filter out time that wasn't measured. The division into
+    # subframes is important for no subseries overlapping between
+    # recorded times
+    start_time = pd.to_datetime('2023-08-01 00:00:00')
+    end_time = pd.to_datetime('2024-04-01 00:00:00')
+    BG['filter_time'] = pd.to_datetime(BG['timestamp'])
+    GW['filter_time'] = pd.to_datetime(GW['timestamp'])
+    BG_23 = BG[BG['filter_time'] < start_time].copy(deep=True)
+    GW_23 = GW[GW['filter_time'] < start_time].copy(deep=True)
+    BG_24 = BG[BG['filter_time'] > end_time].copy(deep=True)
+    GW_24 = GW[GW['filter_time'] > end_time].copy(deep=True)
+
+    # Transform timestamp
+    BG_23 = transform_timestamp(BG_23, col_name='timestamp')
+    GW_23 = transform_timestamp(GW_23, col_name='timestamp')
+    BG_24 = transform_timestamp(BG_24, col_name='timestamp')
+    GW_24 = transform_timestamp(GW_24, col_name='timestamp')
+
+    # Encode location
+    BG_23['location'] = 0
+    GW_23['location'] = 1
+    BG_24['location'] = 0
+    GW_24['location'] = 1
+
+    # Now extract the subseries for the frames
+    BG_23_ss, index = extract_subseries(BG_23, window_size=window_size, features=features, labels=labels, index=0, n_aug=n_aug)
+    print("BG_23 done")
+    BG_24_ss, index = extract_subseries(BG_24, window_size=window_size, features=features, labels=labels, index=index, n_aug=n_aug)
+    print("BG_24 done")
+    GW_23_ss, index = extract_subseries(GW_23, window_size=window_size, features=features, labels=labels, index=index, n_aug=n_aug)
+    print("GW_23 done")
+    GW_24_ss, index = extract_subseries(GW_24, window_size=window_size, features=features, labels=labels, index=index, n_aug=n_aug)
+    print("GW_24 done")
+
+    # Concatenate for one dataframe
+    subseries = pd.concat([BG_23_ss, BG_24_ss, GW_23_ss, GW_24_ss], ignore_index=True)
+    print(f"{ (1+n_aug) * index } subseries have been found, of which {int(np.ceil(n_aug*n_aug/(n_aug+1) * index ))} are augmmentations of original data")
+    return subseries
+
+
+
+
+# Create split and data loaders
+def Splitted_SplitLoader(series_data, series_targets, batch_size):
+    # Create array of all possible indices
+    idxs = series_data[ 'series_id' ].unique()
+
+    test_split_size = 0.9
+    val_split_size = 0.9
+
+    batch_size = batch_size
+
+    np.random.shuffle( idxs ) # Shuffle the indexes randomly
+
+    # Train test split
+    splt = int( test_split_size * len(idxs) )
+    train_idxs = idxs[:splt]
+    test_idxs = idxs[splt:]
+
+    # Now train val split
+    splt = int( val_split_size * len(train_idxs) )
+    val_idxs = train_idxs[splt:]
+    train_idxs = train_idxs[:splt]
+
+    # Assign new sets
+    data_train = series_data[ series_data['series_id'].isin( train_idxs ) ]
+    data_val = series_data[ series_data['series_id'].isin( val_idxs ) ]
+    data_test = series_data[ series_data['series_id'].isin( test_idxs ) ]
+
+    labels_train = series_targets[ series_data['series_id'].isin( train_idxs ) ]
+    labels_val = series_targets[ series_data['series_id'].isin( val_idxs ) ]
+    labels_test = series_targets[ series_data['series_id'].isin( test_idxs ) ]
+
+    trainset = SplittedTimeSeries(data_train, labels_train)
+    valset = SplittedTimeSeries(data_val, labels_val)
+    testset = SplittedTimeSeries(data_test, labels_test)
+
+    trainloader = DataLoader(trainset, batch_size=batch_size, num_workers=0)
+    valloader = DataLoader(valset, batch_size=batch_size, num_workers=0)
+    testloader = DataLoader(testset, batch_size=batch_size, num_workers=0)
+
+    return trainloader, valloader, testloader
