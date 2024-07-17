@@ -290,10 +290,9 @@ def create_artificial_gaps(df):
         num_short_gaps = int(short_gap_ratio * 0.25 * total_half_hours / short_gap_length)
         num_long_gaps = int(long_gap_ratio * 0.25 * total_half_hours / long_gap_length)
         num_very_long_gaps = int(very_long_gap_ratio * 0.25 * total_half_hours / very_long_gap_length)
-
+        applied_gaps = []
         # Function to apply gaps
-        def apply_gaps(num_gaps, gap_length, gap_description):
-            applied_gaps = []
+        def apply_gaps(num_gaps, gap_length, gap_description, applied_gaps):
             for _ in range(num_gaps):
                 # print(f"Trying to create gap of length {gap_length} ")
                 i = 0
@@ -308,22 +307,23 @@ def create_artificial_gaps(df):
                                             freq='30min')
                     gap_indices = df[df['timestamp'].isin(gap_range)].index
                     if all(idx not in applied_gaps for idx in gap_indices) and \
-                    (df.loc[gap_indices, ['H_orig', 'LE_orig']].isna().sum().sum() / (3 * gap_length)) < 0.5:
+                    (df.loc[gap_indices, ['H_orig', 'LE_orig']].isna().all(axis=1).sum() / gap_length) < 0.5:
                         df.loc[gap_indices, "artificial_gap"] = gap_description
                         applied_gaps.extend(gap_indices)
                         break
+            return applied_gaps
         
         # Apply short gaps (24h)
-        apply_gaps(num_short_gaps, short_gap_length, 1)
+        applied_gaps = applied_gaps + apply_gaps(num_short_gaps, short_gap_length, 1, applied_gaps)
         # Apply long gaps (7 days)
-        apply_gaps(num_long_gaps, long_gap_length, 2)
+        applied_gaps = applied_gaps +  apply_gaps(num_long_gaps, long_gap_length, 2, applied_gaps)
         # Apply very long gaps (30 days)
-        apply_gaps(num_very_long_gaps, very_long_gap_length, 3)
+        applied_gaps = applied_gaps + apply_gaps(num_very_long_gaps, very_long_gap_length, 3, applied_gaps)
         
         return df
     # Apply the artificial gaps
-    df_bg_with_gaps = generate_artificial_gaps(df[df["location"] == 0].copy())
-    df_gw_with_gaps = generate_artificial_gaps(df[df["location"] == 1].copy())
+    df_bg_with_gaps = generate_artificial_gaps(df[df["location"] == 0].copy().reset_index())
+    df_gw_with_gaps = generate_artificial_gaps(df[df["location"] == 1].copy().reset_index())
 
     df_final = pd.concat([df_bg_with_gaps, df_gw_with_gaps]).reset_index(drop=True)
     # drop time and timestamp columns
