@@ -278,7 +278,7 @@ def plot(title, label, train_results, val_results, yscale='linear', save_path=No
     sns.despine(trim=True, offset=5)
     plt.title(title, fontsize=15)
     if save_path:
-        plt.savefig(str(os.path.join( save_path)), bbox_inches='tight')
+        plt.savefig(save_path, dpi=600)
     plt.show()
 
 

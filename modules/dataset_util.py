@@ -75,6 +75,31 @@ class SplitTimeSeries(Dataset):
     
 
 
+class SplittedTimeSeries(Dataset):
+    def __init__(self, subseries_data, subseries_labels):
+        self.series_data = subseries_data
+        self.series_labels = subseries_labels
+        self.reindex()
+
+    def reindex(self): # For reindexing the series_id for correct access
+        ids = self.series_data['series_id'].unique()
+
+        for i, ind in enumerate(ids):
+            self.series_data.loc[ self.series_data['series_id'] == ind, 'series_id' ] = i
+
+
+    def __len__(self):
+        return self.series_data['series_id'].nunique()
+    
+    def __getitem__(self, idx):
+        sub_dat_np = self.series_data[ self.series_data['series_id'] == idx ].copy(deep=True).drop('series_id', axis=1).to_numpy()
+        sub_lab_np = self.series_labels[ self.series_data['series_id'] == idx ].copy(deep=True).iloc[-1:].to_numpy()
+        tens_dat = torch.tensor( sub_dat_np, dtype=torch.float32 )
+        tens_lab = torch.tensor( sub_lab_np, dtype=torch.float32 )
+        return tens_dat, tens_lab.squeeze()
+
+
+
 # Function to create a sub-dataloader that only iterates over the first batch
 class SingleBatchDataLoader:
     def __init__(self, dataloader):
