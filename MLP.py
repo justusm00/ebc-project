@@ -1,3 +1,11 @@
+###### Script to fit MLP
+###### Train and test sets are created according to the availability of the given features / labels
+###### If you want to fill the artificial gaps later, you must specifiy fill_artifical_gaps = True (then the testset will be comprised of these artificial gaps)
+
+
+
+
+
 # important  imports
 import os
 import numpy as np

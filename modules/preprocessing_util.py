@@ -11,7 +11,14 @@ from modules.columns import COLS_KEY
 
 
 
-######## Script to automate data preprocessing and merging
+##### Script to automate data preprocessing and merging
+##### It takes all the files flux and meteo data for the two sites (BG and GW) from data/raw, converts relevant columns, keeps common columns, discards other columns, merges everything together
+
+
+
+
+
+
 
 def preprocess_flux_data(path_raw, path_save, cols):
     """Preprocess flux data - transform timestamp, convert numerical columns to float and keep only relevant columns.

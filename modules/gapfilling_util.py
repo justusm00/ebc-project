@@ -1,3 +1,7 @@
+##### Some util functions for gap filling
+
+
+
 import json
 import torch
 import numpy as np
@@ -153,6 +157,7 @@ def load_mlp(filename, device='cpu'):
         list of float : std of training features (None if normalization was not used)
         list of float : mins of training features (None if minmax scaling was not used)
         list of float : maxs of training features (None if minmax scaling was not used)
+        bool : whether or not testset is comprised of artificial gaps
         
 
     """
@@ -217,7 +222,11 @@ def load_rf(filename):
         filename (_type_): _description_
 
     Returns:
-        _type_: _description_
+        some sklearn rf object : rf
+        str: hash based on features and labels
+        list of str: columns used as features
+        list of str: columns used as labels
+        bool : whether or not testset is comprised of artificial gaps
     """
     name = filename.rstrip('.pkl')
     parts = name.split('_')

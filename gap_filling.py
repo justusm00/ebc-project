@@ -1,11 +1,19 @@
+###### This script is used for the actual filling of the gaps. Before running, make sure that you trained at least one RF and one MLP.
+###### Optionally, you can specify another RF and MLP trained on different features / labels - taking into account the availability of the different features
+###### All models must be trained on the same data - if artificial gaps are to be filled, none of the models must be trained on the artificial gaps
+###### Optionally, you can specify if the test loss for each model should be printed
+
+
+
+
+# important imports
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-
-
 from modules.MLPstuff import compute_test_loss_rf, compute_test_loss_mlp
 from modules.gapfilling_util import load_mlp, load_rf, gap_filling_mlp, gap_filling_rf
 from modules.paths import PATH_PREPROCESSED, PATH_GAPFILLED
+
+
 
 
 # SPECIFY THESE
@@ -18,6 +26,8 @@ filename_rfsw = 'RF_AGF_6ee83c392c0d7208dd385e8558700ff9.pkl' # rf trained on ke
 
 path_data = PATH_PREPROCESSED + 'data_merged_with_nans.csv'
 print_test_loss = True
+
+
 
 
 

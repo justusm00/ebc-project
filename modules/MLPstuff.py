@@ -365,6 +365,7 @@ def compute_test_loss_mlp(model, model_hash, cols_features, cols_labels, normali
         cols_features: features used for training
         normalization: was training data normalized?
         minmax_scaling: was minmax scaling applied to training data?
+        fill_artificial_gaps (bool): if true, testset is comprised of the artificial gaps (model must not be trained on these!)
         num_cpus (int, optional): _description_. Defaults to 1.
         device (str, optional): _description_. Defaults to 'cpu'.
 
@@ -399,6 +400,7 @@ def compute_test_loss_rf(model, cols_features, cols_labels, model_hash, fill_art
         cols_features (_type_): _description_
         cols_labels (_type_): _description_
         model_hash (str): needed to load test data
+        fill_artificial_gaps (bool): if true, testset is comprised of the artificial gaps (model must not be trained on these!)
 
     Raises:
         ValueError: _description_

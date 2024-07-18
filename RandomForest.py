@@ -1,15 +1,23 @@
+###### Script to fit random forest
+###### Train and test sets are created according to the availability of the given features / labels
+###### If you want to fill the artificial gaps later, you must specifiy fill_artifical_gaps = True (then the testset will be comprised of these artificial gaps)
+
+
+
+
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_squared_error
 import numpy as np
 import pandas as pd
 import pickle
 import json
-
-
 from modules.columns import COLS_FEATURES_ALL, COLS_LABELS_ALL, COLS_IMPORTANT_FEATURES
 from modules.paths import PATH_MODEL_TRAINING, PATH_MODEL_SAVES_RF, PATH_PREPROCESSED
 from modules.util import get_hash_from_features_and_labels
 from modules.dataset_util import train_test_splitter
+
+
+
 
 
 # ALWAYS SPECIFY THESE
