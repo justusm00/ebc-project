@@ -189,21 +189,35 @@ def train_test_splitter(df, cols_features, cols_labels, model_hash, use_all_data
     if verbose:
         print(f"Number of records in original data: {df.shape[0]}")
 
-    if not use_all_data:
-        df = df[df["artificial_gap"] == 0]
-        print(f"Number of records after filtering out artificial gaps: {df.shape[0]}")
+
+    if use_all_data:
+        # drop nan values
+        df = df[cols_features + cols_labels]
+        df = df.dropna()        
+        
+        # Split the data
+        train_indices, test_indices = train_test_split(df.index, test_size=test_size, random_state=random_state)
 
 
-    # drop nan values
-    df = df[cols_features + cols_labels]
-    df = df.dropna()
+    else:
+        df_train = df[df["artificial_gap"] == 0]
+        df_test = df[df["artificial_gap"] != 0]
+
+        # drop nan values
+        df_train = df_train[cols_features + cols_labels]
+        df_test = df_test[cols_features + cols_labels]
+
+        df_train = df_train.dropna()
+        df_test = df_test.dropna()
+
+        train_indices = df_train.index
+        test_indices = df_test.index
+
+
     if verbose:
-        print(f"Number of records after dropping rows with nan values in feature/label columns: {df.shape[0]}")
-    
-    
-    # Split the data
-    train_indices, test_indices = train_test_split(df.index, test_size=test_size, random_state=random_state)
-    
+        print(f"Number of train values: {len(train_indices)}")
+        print(f"Number of test values: {len(test_indices)}")
+
 
     # Data to be saved
     indices = {

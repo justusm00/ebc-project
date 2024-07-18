@@ -45,10 +45,8 @@ def fit_rf(cols_features, cols_labels, use_all_data=True, save_results=True, ver
     # create model name
     if use_all_data:
         model_name = f'RF_{model_hash}'
-        test_size = 0.2
     else:
         model_name = f'RF_AGF_{model_hash}'
-        test_size = 0.01 # very small because we don't really need a testset
 
     if verbose:
         print("\n")
@@ -88,7 +86,7 @@ def fit_rf(cols_features, cols_labels, use_all_data=True, save_results=True, ver
                             model_hash=model_hash,
                             use_all_data=use_all_data,
                             path_save=PATH_MODEL_TRAINING,
-                            test_size=test_size)
+                            test_size=0.2)
         
     training_data = data.loc[train_indices]
     test_data = data.loc[test_indices]

@@ -31,7 +31,7 @@ normalization = False
 minmax_scaling = True
 who_trained = 'JM' # author
 GPU = False
-num_epochs = 50
+num_epochs = 100
 lr = 10**(-3)
 patience_early_stopper = 20
 patience_scheduler = 10
@@ -81,9 +81,6 @@ def train_mlp(GPU, num_epochs, lr, batch_size, cols_features=COLS_FEATURES_ALL,
 
     if not use_all_data:
         model_name = model_name + "_AGF"
-        test_size = 0.01 # very small since we do not really need a testset
-    else:
-        test_size = 0.2
 
 
     model_name = model_name + "_" + model_hash
@@ -149,7 +146,7 @@ def train_mlp(GPU, num_epochs, lr, batch_size, cols_features=COLS_FEATURES_ALL,
                                model_hash=model_hash,
                                use_all_data=use_all_data,
                                path_save=PATH_MODEL_TRAINING,
-                               test_size=test_size)
+                               test_size=0.2)
         
         trainset, testset = grab_data(model_hash=model_hash,
                                       num_cpus=num_cpus,
