@@ -194,15 +194,6 @@ def train_test_splitter(df, cols_features, cols_labels, model_hash, fill_artific
 
 
     if fill_artificial_gaps:
-        # drop nan values
-        df = df[cols_features + cols_labels]
-        df = df.dropna()        
-        
-        # Split the data
-        train_indices, test_indices = train_test_split(df.index, test_size=test_size, random_state=random_state)
-
-
-    else:
         df_train = df[df["artificial_gap"] == 0]
         df_test = df[df["artificial_gap"] != 0]
 
@@ -215,6 +206,16 @@ def train_test_splitter(df, cols_features, cols_labels, model_hash, fill_artific
 
         train_indices = df_train.index
         test_indices = df_test.index
+
+
+
+    else:
+        # drop nan values
+        df = df[cols_features + cols_labels]
+        df = df.dropna()        
+        
+        # Split the data
+        train_indices, test_indices = train_test_split(df.index, test_size=test_size, random_state=random_state)
 
 
     if verbose:
@@ -233,9 +234,9 @@ def train_test_splitter(df, cols_features, cols_labels, model_hash, fill_artific
     if path_save:
         # Save to a file
         if fill_artificial_gaps:
-            file_path = path_save + 'indices_' + model_hash + '.pkl'
-        else:
             file_path = path_save + 'indices_AGF_' + model_hash + '.pkl'
+        else:
+            file_path = path_save + 'indices_' + model_hash + '.pkl'
 
         with open(file_path, 'wb') as file:
             pickle.dump(indices, file)

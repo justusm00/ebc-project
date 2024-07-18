@@ -235,11 +235,11 @@ def train_mlp(GPU, num_epochs, lr, batch_size, cols_features=COLS_FEATURES_ALL,
     if normalization:
         # save statistics
         if fill_artificial_gaps:
-            model_means_path = PATH_MODEL_SAVES_STATISTICS + model_hash + '_means.npy'
-            model_stds_path = PATH_MODEL_SAVES_STATISTICS  + model_hash + '_stds.npy'
-        else:
             model_means_path = PATH_MODEL_SAVES_STATISTICS + model_hash + '_AGF_means.npy'
             model_stds_path = PATH_MODEL_SAVES_STATISTICS  + model_hash + '_AGF_stds.npy'
+        else:
+            model_means_path = PATH_MODEL_SAVES_STATISTICS + model_hash + '_means.npy'
+            model_stds_path = PATH_MODEL_SAVES_STATISTICS  + model_hash + '_stds.npy'
         np.save(model_means_path, trainset.dataset.means.numpy())
         np.save(model_stds_path, trainset.dataset.stds.numpy())
         print(f"Saved means to {model_means_path} \n")
@@ -248,11 +248,11 @@ def train_mlp(GPU, num_epochs, lr, batch_size, cols_features=COLS_FEATURES_ALL,
     if minmax_scaling:
         # save statistics
         if fill_artificial_gaps:
-            model_maxs_path = PATH_MODEL_SAVES_STATISTICS + model_hash + '_maxs.npy'
-            model_mins_path = PATH_MODEL_SAVES_STATISTICS + model_hash  + '_mins.npy'
-        else:
             model_maxs_path = PATH_MODEL_SAVES_STATISTICS + model_hash + '_AGF_maxs.npy'
             model_mins_path = PATH_MODEL_SAVES_STATISTICS + model_hash  + '_AGF_mins.npy'
+        else:
+            model_maxs_path = PATH_MODEL_SAVES_STATISTICS + model_hash + '_maxs.npy'
+            model_mins_path = PATH_MODEL_SAVES_STATISTICS + model_hash  + '_mins.npy'
         np.save(model_maxs_path, trainset.dataset.maxs.numpy())
         np.save(model_mins_path, trainset.dataset.mins.numpy())
         print(f"Saved maxs to {model_maxs_path} \n")

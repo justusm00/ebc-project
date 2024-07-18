@@ -329,8 +329,8 @@ def create_artificial_gaps(df):
         
         return df
     # Apply the artificial gaps
-    df_bg_with_gaps = generate_artificial_gaps(df[df["location"] == 0].copy().reset_index())
-    df_gw_with_gaps = generate_artificial_gaps(df[df["location"] == 1].copy().reset_index())
+    df_bg_with_gaps = generate_artificial_gaps(df[df["location"] == 0].copy().reset_index(drop=True))
+    df_gw_with_gaps = generate_artificial_gaps(df[df["location"] == 1].copy().reset_index(drop=True))
 
     df_final = pd.concat([df_bg_with_gaps, df_gw_with_gaps]).reset_index(drop=True)
     # drop time and timestamp columns

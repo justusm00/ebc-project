@@ -21,8 +21,8 @@ from modules.dataset_util import train_test_splitter
 
 
 # ALWAYS SPECIFY THESE
-# cols_features = COLS_IMPORTANT_FEATURES
-cols_features = ["incomingShortwaveRadiation", "location", "day_of_year", "30min"]
+cols_features = COLS_IMPORTANT_FEATURES
+# cols_features = ["incomingShortwaveRadiation", "location", "day_of_year", "30min"]
 cols_labels = COLS_LABELS_ALL
 fill_artificial_gaps = True
 
@@ -52,9 +52,9 @@ def fit_rf(cols_features, cols_labels, fill_artificial_gaps=False, save_results=
 
     # create model name
     if fill_artificial_gaps:
-        model_name = f'RF_{model_hash}'
-    else:
         model_name = f'RF_AGF_{model_hash}'
+    else:
+        model_name = f'RF_{model_hash}'
 
     if verbose:
         print("\n")
@@ -76,9 +76,9 @@ def fit_rf(cols_features, cols_labels, fill_artificial_gaps=False, save_results=
 
     try:
         if fill_artificial_gaps:
-            data_path = PATH_MODEL_TRAINING + 'indices_' + model_hash + '.pkl'
-        else:
             data_path = PATH_MODEL_TRAINING + 'indices_AGF_' + model_hash + '.pkl'
+        else:
+            data_path = PATH_MODEL_TRAINING + 'indices_' + model_hash + '.pkl'
 
         with open(data_path, 'rb') as file:
             indices = pickle.load(file)
