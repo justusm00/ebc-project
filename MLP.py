@@ -1,7 +1,16 @@
+###### Script to fit MLP
+###### Train and test sets are created according to the availability of the given features / labels
+###### If you want to fill the artificial gaps later, you must specifiy fill_artifical_gaps = True (then the testset will be comprised of these artificial gaps)
+
+
+
+
+
 # important  imports
 import os
 import numpy as np
 import json
+import pandas as pd
 
 
 import torch
@@ -15,27 +24,27 @@ import torch.optim as optim
 from modules.util import get_hash_from_features_and_labels
 from modules.dataset_util import grab_data, train_val_splitter, data_loaders,train_test_splitter, SingleBatchDataLoader
 from modules.MLPstuff import run_training, MLP, test, MyReduceLROnPlateau
-from modules.columns import COLS_FEATURES_ALL, COLS_LABELS_ALL, COLS_KEY, COLS_KEY_ALT
+from modules.columns import COLS_FEATURES_ALL, COLS_LABELS_ALL, COLS_KEY, COLS_KEY_ALT, COLS_IMPORTANT_FEATURES
 from modules.paths import PATH_MODEL_TRAINING, PATH_MODEL_SAVES_MLP, PATH_PLOTS, PATH_PREPROCESSED,\
     PATH_MODEL_SAVES_FEATURES, PATH_MODEL_SAVES_LABELS, PATH_MODEL_SAVES_STATISTICS
 
 
 
 # SPECIFY THESE
-cols_features = ["incomingShortwaveRadiation", "location", "soilTemperature",
-                 "windSpeed", "airTemperature", "30min", "day_of_year"]
-# cols_features = COLS_KEY + ["incomingShortwaveRadiation"]
+# cols_features = COLS_IMPORTANT_FEATURES
+cols_features = ["incomingShortwaveRadiation", "location", "day_of_year", "30min"]
 cols_labels = COLS_LABELS_ALL
+fill_artificial_gaps = True # if True, use artifical gaps as testset
 normalization = False
 minmax_scaling = True
 who_trained = 'JM' # author
 GPU = False
-num_epochs = 10
+num_epochs = 100
 lr = 10**(-3)
 patience_early_stopper = 20
 patience_scheduler = 10
 num_hidden_units = 60
-num_hidden_layers = 8
+num_hidden_layers = 4
 batch_size = 20
 
 
@@ -43,6 +52,7 @@ batch_size = 20
 
 def train_mlp(GPU, num_epochs, lr, batch_size, cols_features=COLS_FEATURES_ALL, 
               cols_labels=COLS_LABELS_ALL,
+              fill_artificial_gaps=False,
               normalization=True, minmax_scaling=False, 
               patience_early_stopper=10, patience_scheduler=10):
     """Train MLP.
@@ -71,11 +81,17 @@ def train_mlp(GPU, num_epochs, lr, batch_size, cols_features=COLS_FEATURES_ALL,
 
     # construct model name
     if normalization:
-        model_name = f'mlp_{num_hidden_units}_{num_hidden_layers}_{who_trained}_norm_{model_hash}'
+        model_name = f'mlp_{num_hidden_units}_{num_hidden_layers}_{who_trained}_norm'
     elif minmax_scaling:
-        model_name = f'mlp_{num_hidden_units}_{num_hidden_layers}_{who_trained}_minmax_{model_hash}'
+        model_name = f'mlp_{num_hidden_units}_{num_hidden_layers}_{who_trained}_minmax'
     else:
-        model_name = f'mlp_{num_hidden_units}_{num_hidden_layers}_{who_trained}_{model_hash}'
+        model_name = f'mlp_{num_hidden_units}_{num_hidden_layers}_{who_trained}'
+
+    if fill_artificial_gaps:
+        model_name = model_name + "_AGF"
+
+
+    model_name = model_name + "_" + model_hash
 
     print("\n")
     print(f"Features used: {len(cols_features)} ({cols_features}) \n")
@@ -118,26 +134,31 @@ def train_mlp(GPU, num_epochs, lr, batch_size, cols_features=COLS_FEATURES_ALL,
     if GPU==True:
         torch.cuda.empty_cache()
 
+
+
     # try to load train and test data. If not available, create train / test split for this combination of features and labels
     try:
-        trainset, testset = grab_data(path_data=PATH_PREPROCESSED+'data_merged_with_nans.csv',
-                                      path_indices=PATH_MODEL_TRAINING + 'indices_' + model_hash + '.pkl',
+        trainset, testset = grab_data(model_hash=model_hash,
                                       num_cpus=num_cpus,
+                                      fill_artificial_gaps=fill_artificial_gaps,
                                       cols_features=cols_features,
                                       cols_labels=cols_labels,
                                       normalization=normalization,
                                       minmax_scaling=minmax_scaling)
     except:
         print("No train and test data available for given feature/label combination. Creating one ... \n")
-        _, _ = train_test_splitter(path_data=PATH_PREPROCESSED + 'data_merged_with_nans.csv', 
+        data = pd.read_csv(PATH_PREPROCESSED + 'data_merged_with_nans.csv')
+        _, _ = train_test_splitter(df=data,
                                cols_features=cols_features, 
                                cols_labels=cols_labels, 
                                model_hash=model_hash,
-                               path_save=PATH_MODEL_TRAINING)
+                               fill_artificial_gaps=fill_artificial_gaps,
+                               path_save=PATH_MODEL_TRAINING,
+                               test_size=0.2)
         
-        trainset, testset = grab_data(path_data=PATH_PREPROCESSED+'data_merged_with_nans.csv',
-                                      path_indices=PATH_MODEL_TRAINING + 'indices_' + model_hash + '.pkl',
+        trainset, testset = grab_data(model_hash=model_hash,
                                       num_cpus=num_cpus,
+                                      fill_artificial_gaps=fill_artificial_gaps,
                                       cols_features=cols_features,
                                       cols_labels=cols_labels,
                                       normalization=normalization,
@@ -213,8 +234,12 @@ def train_mlp(GPU, num_epochs, lr, batch_size, cols_features=COLS_FEATURES_ALL,
 
     if normalization:
         # save statistics
-        model_means_path = PATH_MODEL_SAVES_STATISTICS + model_hash + '_means.npy'
-        model_stds_path = PATH_MODEL_SAVES_STATISTICS  + model_hash + '_stds.npy'
+        if fill_artificial_gaps:
+            model_means_path = PATH_MODEL_SAVES_STATISTICS + model_hash + '_AGF_means.npy'
+            model_stds_path = PATH_MODEL_SAVES_STATISTICS  + model_hash + '_AGF_stds.npy'
+        else:
+            model_means_path = PATH_MODEL_SAVES_STATISTICS + model_hash + '_means.npy'
+            model_stds_path = PATH_MODEL_SAVES_STATISTICS  + model_hash + '_stds.npy'
         np.save(model_means_path, trainset.dataset.means.numpy())
         np.save(model_stds_path, trainset.dataset.stds.numpy())
         print(f"Saved means to {model_means_path} \n")
@@ -222,8 +247,12 @@ def train_mlp(GPU, num_epochs, lr, batch_size, cols_features=COLS_FEATURES_ALL,
 
     if minmax_scaling:
         # save statistics
-        model_maxs_path = PATH_MODEL_SAVES_STATISTICS + model_hash + '_maxs.npy'
-        model_mins_path = PATH_MODEL_SAVES_STATISTICS + model_hash  + '_mins.npy'
+        if fill_artificial_gaps:
+            model_maxs_path = PATH_MODEL_SAVES_STATISTICS + model_hash + '_AGF_maxs.npy'
+            model_mins_path = PATH_MODEL_SAVES_STATISTICS + model_hash  + '_AGF_mins.npy'
+        else:
+            model_maxs_path = PATH_MODEL_SAVES_STATISTICS + model_hash + '_maxs.npy'
+            model_mins_path = PATH_MODEL_SAVES_STATISTICS + model_hash  + '_mins.npy'
         np.save(model_maxs_path, trainset.dataset.maxs.numpy())
         np.save(model_mins_path, trainset.dataset.mins.numpy())
         print(f"Saved maxs to {model_maxs_path} \n")
@@ -242,6 +271,7 @@ if __name__ == '__main__':
               batch_size=batch_size,
               cols_features=cols_features,
               cols_labels=cols_labels,
+              fill_artificial_gaps=fill_artificial_gaps,
               normalization=normalization,
               minmax_scaling=minmax_scaling,
               patience_early_stopper=patience_early_stopper,
