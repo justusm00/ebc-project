@@ -34,7 +34,7 @@ from modules.paths import PATH_MODEL_TRAINING, PATH_MODEL_SAVES_MLP, PATH_PLOTS,
 # cols_features = COLS_IMPORTANT_FEATURES
 cols_features = ["incomingShortwaveRadiation", "location", "day_of_year", "30min"]
 cols_labels = COLS_LABELS_ALL
-fill_artificial_gaps = False # if false, don't train on data flagged as artificial gaps
+fill_artificial_gaps = True # if True, use artifical gaps as testset
 normalization = False
 minmax_scaling = True
 who_trained = 'JM' # author
@@ -52,7 +52,7 @@ batch_size = 20
 
 def train_mlp(GPU, num_epochs, lr, batch_size, cols_features=COLS_FEATURES_ALL, 
               cols_labels=COLS_LABELS_ALL,
-              fill_artificial_gaps=True,
+              fill_artificial_gaps=False,
               normalization=True, minmax_scaling=False, 
               patience_early_stopper=10, patience_scheduler=10):
     """Train MLP.
