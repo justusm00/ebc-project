@@ -91,7 +91,7 @@ class SingleBatchDataLoader:
 ############# DATASET FUNCTIONS #############
 
 # Data loader
-def grab_data(model_hash, num_cpus, use_all_data=True, cols_features=None, cols_labels=None, normalization=False, minmax_scaling=False):
+def grab_data(model_hash, num_cpus, fill_artificial_gaps=False, cols_features=None, cols_labels=None, normalization=False, minmax_scaling=False):
     """Loads training and test data from respective directories. 
 
     Args:
@@ -111,7 +111,7 @@ def grab_data(model_hash, num_cpus, use_all_data=True, cols_features=None, cols_
         raise ValueError("Can only perform normalization OR minmax_scaling")
 
 
-    train_indices, test_indices = get_train_test_indices(use_all_data, model_hash)
+    train_indices, test_indices = get_train_test_indices(fill_artificial_gaps, model_hash)
 
     path_data = PATH_PREPROCESSED + 'data_merged_with_nans.csv'
 
@@ -169,7 +169,7 @@ def grab_data(model_hash, num_cpus, use_all_data=True, cols_features=None, cols_
 
 
 
-def train_test_splitter(df, cols_features, cols_labels, model_hash, use_all_data=True, path_save=None, test_size=0.2, 
+def train_test_splitter(df, cols_features, cols_labels, model_hash, fill_artificial_gaps=True, path_save=None, test_size=0.2, 
                            random_state=42, verbose=True):
     """Perform random train test split and drop nan values. This needs to be done for each unique combination of features and labels since the data availability depends on this combination. The train and test data are save to path_save and identified by a unique hash generated from the feature-label-combination.
 
@@ -190,7 +190,7 @@ def train_test_splitter(df, cols_features, cols_labels, model_hash, use_all_data
         print(f"Number of records in original data: {df.shape[0]}")
 
 
-    if use_all_data:
+    if fill_artificial_gaps:
         # drop nan values
         df = df[cols_features + cols_labels]
         df = df.dropna()        
@@ -229,7 +229,7 @@ def train_test_splitter(df, cols_features, cols_labels, model_hash, use_all_data
     
     if path_save:
         # Save to a file
-        if use_all_data:
+        if fill_artificial_gaps:
             file_path = path_save + 'indices_' + model_hash + '.pkl'
         else:
             file_path = path_save + 'indices_AGF_' + model_hash + '.pkl'
@@ -382,12 +382,12 @@ def grab_filled_data(features):
 
 
 
-def get_train_test_indices(use_all_data, model_hash):
+def get_train_test_indices(fill_artificial_gaps, model_hash):
     # determine path to train / test indices
-    if use_all_data:
-        path_indices = PATH_MODEL_TRAINING + 'indices_' + model_hash + '.pkl'
-    else:
+    if fill_artificial_gaps:
         path_indices = PATH_MODEL_TRAINING + 'indices_AGF_' + model_hash + '.pkl'
+    else:
+        path_indices = PATH_MODEL_TRAINING + 'indices_' + model_hash + '.pkl'
     # load data
     # Load from the file
     with open(path_indices, 'rb') as file:

@@ -355,7 +355,7 @@ def run_training(model, optimizer, num_epochs, train_dataloader, val_dataloader,
 
 
 
-def compute_test_loss_mlp(model, model_hash, cols_features, cols_labels, normalization, minmax_scaling, use_all_data,
+def compute_test_loss_mlp(model, model_hash, cols_features, cols_labels, normalization, minmax_scaling, fill_artificial_gaps,
                            num_cpus=1, device='cpu'):
     """Compute loss of model on test set
 
@@ -374,7 +374,7 @@ def compute_test_loss_mlp(model, model_hash, cols_features, cols_labels, normali
 
     _ , testset = grab_data(model_hash=model_hash,
                                 num_cpus=num_cpus,
-                                use_all_data=use_all_data,
+                                fill_artificial_gaps=fill_artificial_gaps,
                                 cols_features=cols_features,
                                 cols_labels=cols_labels,
                                 normalization=normalization,
@@ -391,7 +391,7 @@ def compute_test_loss_mlp(model, model_hash, cols_features, cols_labels, normali
 
 
 
-def compute_test_loss_rf(model, cols_features, cols_labels, model_hash, use_all_data):
+def compute_test_loss_rf(model, cols_features, cols_labels, model_hash, fill_artificial_gaps):
     """Compute loss of random forest on test set
 
     Args:
@@ -404,7 +404,7 @@ def compute_test_loss_rf(model, cols_features, cols_labels, model_hash, use_all_
         ValueError: _description_
     """
     path_data = PATH_PREPROCESSED + 'data_merged_with_nans.csv'
-    _, test_indices = get_train_test_indices(use_all_data, model_hash)
+    _, test_indices = get_train_test_indices(fill_artificial_gaps, model_hash)
     data = pd.read_csv(path_data)
     data = data.loc[test_indices]
 

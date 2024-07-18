@@ -79,7 +79,7 @@ def extract_mlp_details_from_name(model_name):
     model_hash = parts[-1]
     normalization = 'norm' in parts
     minmax_scaling = 'minmax' in parts
-    use_all_data = not 'AGF' in parts
+    fill_artificial_gaps = 'AGF' in parts
     if (minmax_scaling is True ) and (normalization is True ) :
         raise ValueError("Can only perform normalization OR minmax_scaling")
     # load RF features and labels
@@ -90,7 +90,7 @@ def extract_mlp_details_from_name(model_name):
 
 
     
-    return num_hidden_units, num_hidden_layers, model_hash, cols_features, cols_labels, normalization, minmax_scaling, use_all_data
+    return num_hidden_units, num_hidden_layers, model_hash, cols_features, cols_labels, normalization, minmax_scaling, fill_artificial_gaps
 
 
 

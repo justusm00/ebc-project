@@ -23,10 +23,10 @@ from modules.paths import PATH_MODEL_TRAINING, PATH_MODEL_SAVES_MLP, PATH_PLOTS,
 
 
 # SPECIFY THESE
-cols_features = COLS_IMPORTANT_FEATURES
-# cols_features = ["incomingShortwaveRadiation", "location", "day_of_year", "30min"]
+# cols_features = COLS_IMPORTANT_FEATURES
+cols_features = ["incomingShortwaveRadiation", "location", "day_of_year", "30min"]
 cols_labels = COLS_LABELS_ALL
-use_all_data = False # if false, don't train on data flagged as artificial gaps
+fill_artificial_gaps = False # if false, don't train on data flagged as artificial gaps
 normalization = False
 minmax_scaling = True
 who_trained = 'JM' # author
@@ -36,7 +36,7 @@ lr = 10**(-3)
 patience_early_stopper = 20
 patience_scheduler = 10
 num_hidden_units = 60
-num_hidden_layers = 8
+num_hidden_layers = 4
 batch_size = 20
 
 
@@ -44,7 +44,7 @@ batch_size = 20
 
 def train_mlp(GPU, num_epochs, lr, batch_size, cols_features=COLS_FEATURES_ALL, 
               cols_labels=COLS_LABELS_ALL,
-              use_all_data=True,
+              fill_artificial_gaps=True,
               normalization=True, minmax_scaling=False, 
               patience_early_stopper=10, patience_scheduler=10):
     """Train MLP.
@@ -79,7 +79,7 @@ def train_mlp(GPU, num_epochs, lr, batch_size, cols_features=COLS_FEATURES_ALL,
     else:
         model_name = f'mlp_{num_hidden_units}_{num_hidden_layers}_{who_trained}'
 
-    if not use_all_data:
+    if fill_artificial_gaps:
         model_name = model_name + "_AGF"
 
 
@@ -132,7 +132,7 @@ def train_mlp(GPU, num_epochs, lr, batch_size, cols_features=COLS_FEATURES_ALL,
     try:
         trainset, testset = grab_data(model_hash=model_hash,
                                       num_cpus=num_cpus,
-                                      use_all_data=use_all_data,
+                                      fill_artificial_gaps=fill_artificial_gaps,
                                       cols_features=cols_features,
                                       cols_labels=cols_labels,
                                       normalization=normalization,
@@ -144,13 +144,13 @@ def train_mlp(GPU, num_epochs, lr, batch_size, cols_features=COLS_FEATURES_ALL,
                                cols_features=cols_features, 
                                cols_labels=cols_labels, 
                                model_hash=model_hash,
-                               use_all_data=use_all_data,
+                               fill_artificial_gaps=fill_artificial_gaps,
                                path_save=PATH_MODEL_TRAINING,
                                test_size=0.2)
         
         trainset, testset = grab_data(model_hash=model_hash,
                                       num_cpus=num_cpus,
-                                      use_all_data=use_all_data,
+                                      fill_artificial_gaps=fill_artificial_gaps,
                                       cols_features=cols_features,
                                       cols_labels=cols_labels,
                                       normalization=normalization,
@@ -226,7 +226,7 @@ def train_mlp(GPU, num_epochs, lr, batch_size, cols_features=COLS_FEATURES_ALL,
 
     if normalization:
         # save statistics
-        if use_all_data:
+        if fill_artificial_gaps:
             model_means_path = PATH_MODEL_SAVES_STATISTICS + model_hash + '_means.npy'
             model_stds_path = PATH_MODEL_SAVES_STATISTICS  + model_hash + '_stds.npy'
         else:
@@ -239,7 +239,7 @@ def train_mlp(GPU, num_epochs, lr, batch_size, cols_features=COLS_FEATURES_ALL,
 
     if minmax_scaling:
         # save statistics
-        if use_all_data:
+        if fill_artificial_gaps:
             model_maxs_path = PATH_MODEL_SAVES_STATISTICS + model_hash + '_maxs.npy'
             model_mins_path = PATH_MODEL_SAVES_STATISTICS + model_hash  + '_mins.npy'
         else:
@@ -263,7 +263,7 @@ if __name__ == '__main__':
               batch_size=batch_size,
               cols_features=cols_features,
               cols_labels=cols_labels,
-              use_all_data=use_all_data,
+              fill_artificial_gaps=fill_artificial_gaps,
               normalization=normalization,
               minmax_scaling=minmax_scaling,
               patience_early_stopper=patience_early_stopper,

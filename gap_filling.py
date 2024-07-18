@@ -9,8 +9,8 @@ from modules.paths import PATH_PREPROCESSED, PATH_GAPFILLED
 
 
 # SPECIFY THESE
-filename_mlp = 'mlp_60_8_JM_minmax_AGF_5286a2e3c84ebdb055490bea6c9dc91c.pth' # mlp trained on important features
-filename_mlpsw = 'mlp_60_8_JM_minmax_AGF_6ee83c392c0d7208dd385e8558700ff9.pth' # mlp trained on keys + incoming shortwave radiation
+filename_mlp = 'mlp_60_4_JM_minmax_AGF_5286a2e3c84ebdb055490bea6c9dc91c.pth' # mlp trained on important features
+filename_mlpsw = 'mlp_60_4_JM_minmax_AGF_6ee83c392c0d7208dd385e8558700ff9.pth' # mlp trained on keys + incoming shortwave radiation
 # filename_mlpsw = None
 filename_rf = 'RF_AGF_5286a2e3c84ebdb055490bea6c9dc91c.pkl' # rf trained on important features
 filename_rfsw = 'RF_AGF_6ee83c392c0d7208dd385e8558700ff9.pkl' # rf trained on keys + incoming shortwave radiation
@@ -43,12 +43,12 @@ def fill_gaps(path_data,
         print_test_loss (bool): whether or not test loss should be computed and printed (optional, defaults to True)
 
     """
-    rf, hash_rf, cols_features_rf, cols_labels_rf, use_all_data_rf = load_rf(filename_rf)
+    rf, hash_rf, cols_features_rf, cols_labels_rf, fill_artificial_gaps_rf = load_rf(filename_rf)
 
 
     if filename_rfsw:
-        rfsw, hash_rfsw, cols_features_rfsw, cols_labels_rfsw, use_all_data_rfsw = load_rf(filename_rfsw)
-        if use_all_data_rfsw != use_all_data_rf:
+        rfsw, hash_rfsw, cols_features_rfsw, cols_labels_rfsw, fill_artificial_gaps_rfsw = load_rf(filename_rfsw)
+        if fill_artificial_gaps_rfsw != fill_artificial_gaps_rf:
             raise ValueError("RF and RFSW must be trained on the same data (one of them included the artificial gaps, one did not)")
         if (set(cols_labels_rfsw) != set(cols_labels_rf)):
             raise ValueError("Labels / target variables must be the same for both RFs")
@@ -57,16 +57,16 @@ def fill_gaps(path_data,
 
     # load MLPs
     mlp, cols_features_mlp, cols_labels_mlp, hash_mlp, normalization_mlp, minmax_scaling_mlp, trainset_means,\
-        trainset_stds, trainset_mins, trainset_maxs, use_all_data_mlp  = load_mlp(filename_mlp)
+        trainset_stds, trainset_mins, trainset_maxs, fill_artificial_gaps_mlp  = load_mlp(filename_mlp)
     
-    if use_all_data_mlp != use_all_data_rf:
+    if fill_artificial_gaps_mlp != fill_artificial_gaps_rf:
         raise ValueError("MLP and RF must be trained on the same data (one of them included the artificial gaps, one did not)")
 
 
     if filename_mlpsw:
         mlpsw, cols_features_mlpsw, cols_labels_mlpsw, hash_mlpsw, normalization_mlpsw, minmax_scaling_mlpsw, \
-            trainset_means_sw, trainset_stds_sw, trainset_mins_sw, trainset_maxs_sw, use_all_data_mlpsw  = load_mlp(filename_mlpsw)
-        if use_all_data_mlpsw != use_all_data_mlp:
+            trainset_means_sw, trainset_stds_sw, trainset_mins_sw, trainset_maxs_sw, fill_artificial_gaps_mlpsw  = load_mlp(filename_mlpsw)
+        if fill_artificial_gaps_mlpsw != fill_artificial_gaps_mlp:
             raise ValueError("MLP and MLPSW must be trained on the same data (one of them included the artificial gaps, one did not)")
         if (set(cols_labels_mlpsw) != set(cols_labels_mlp)):
             raise ValueError("Labels / target variables must be the same for both MLPs")
@@ -77,9 +77,9 @@ def fill_gaps(path_data,
         raise ValueError("Labels / target variables must be the same for MLP and RF")
 
         
-    # now only use single variable for labels and use_all_data
+    # now only use single variable for labels and fill_artificial_gaps
     cols_labels = cols_labels_rf
-    use_all_data = use_all_data_rf
+    fill_artificial_gaps = fill_artificial_gaps_rf
 
     if print_test_loss:
         # print RF test loss
@@ -87,7 +87,7 @@ def fill_gaps(path_data,
                                             cols_features_rf,
                                             cols_labels_rf,
                                             hash_rf,
-                                            use_all_data)
+                                            fill_artificial_gaps)
         print(f"Test MSE for RF trained on {cols_features_rf}: {loss_test_rf:.2f}")
         # print MLP test loss
         loss_test_mlp = compute_test_loss_mlp(mlp,
@@ -96,11 +96,11 @@ def fill_gaps(path_data,
                                         cols_labels_mlp,
                                         normalization_mlp,
                                         minmax_scaling_mlp,
-                                        use_all_data)
+                                        fill_artificial_gaps)
         print(f"Test MSE for MLP trained on {cols_features_mlp}: {loss_test_mlp:.2f}")
         if filename_rfsw:
             # print RFSW test loss
-            loss_test_rfsw = compute_test_loss_rf(rfsw, cols_features_rfsw, cols_labels_rfsw, hash_rfsw, use_all_data)
+            loss_test_rfsw = compute_test_loss_rf(rfsw, cols_features_rfsw, cols_labels_rfsw, hash_rfsw, fill_artificial_gaps)
             print(f"Test MSE for RF trained on {cols_features_rfsw}: {loss_test_rfsw:.2f}")
         if filename_mlpsw:
             loss_test_mlpsw = compute_test_loss_mlp(mlpsw,
@@ -109,7 +109,7 @@ def fill_gaps(path_data,
                                                 cols_labels_mlpsw,
                                                 normalization_mlpsw,
                                                 minmax_scaling_mlpsw,
-                                                use_all_data)
+                                                fill_artificial_gaps)
             print(f"Test MSE for MLP trained on {cols_features_mlpsw}: {loss_test_mlpsw:.2f}")
 
 
@@ -119,6 +119,14 @@ def fill_gaps(path_data,
       
     # load data
     data = pd.read_csv(path_data)
+
+    if fill_artificial_gaps:
+        # copy original values
+        for col in cols_labels:
+            data[col + '_copy'] = data[col]
+        # set values in artificial gaps to na
+        data.loc[data['artificial_gap'] != 0, cols_labels] = np.nan
+
 
 
     # get gapfilled dataframes
@@ -166,6 +174,12 @@ def fill_gaps(path_data,
             data[col_rf] = data[col_rf].fillna(df_rfsw[col_rf])
             print(f"Number of NaNs in {col_rf} after adding SW data: {data[data[col_rf].isna()].shape[0]}")
 
+    if fill_artificial_gaps:
+        # retrieve original values
+        for col in cols_labels:
+            data = data.drop(col, axis=1)
+            data[col] = data[col + '_copy']
+            data = data.drop(col + '_copy', axis=1)
 
 
 

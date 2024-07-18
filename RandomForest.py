@@ -16,10 +16,10 @@ from modules.dataset_util import train_test_splitter
 # cols_features = COLS_IMPORTANT_FEATURES
 cols_features = ["incomingShortwaveRadiation", "location", "day_of_year", "30min"]
 cols_labels = COLS_LABELS_ALL
-use_all_data = False
+fill_artificial_gaps = True
 
 
-def fit_rf(cols_features, cols_labels, use_all_data=True, save_results=True, verbose=True):
+def fit_rf(cols_features, cols_labels, fill_artificial_gaps=False, save_results=True, verbose=True):
     """Fit random forest model, print train/test MSEs and save model.
 
     Args:
@@ -43,7 +43,7 @@ def fit_rf(cols_features, cols_labels, use_all_data=True, save_results=True, ver
     model_hash = get_hash_from_features_and_labels(cols_features=cols_features, cols_labels=cols_labels)
 
     # create model name
-    if use_all_data:
+    if fill_artificial_gaps:
         model_name = f'RF_{model_hash}'
     else:
         model_name = f'RF_AGF_{model_hash}'
@@ -67,7 +67,7 @@ def fit_rf(cols_features, cols_labels, use_all_data=True, save_results=True, ver
 
 
     try:
-        if use_all_data:
+        if fill_artificial_gaps:
             data_path = PATH_MODEL_TRAINING + 'indices_' + model_hash + '.pkl'
         else:
             data_path = PATH_MODEL_TRAINING + 'indices_AGF_' + model_hash + '.pkl'
@@ -84,7 +84,7 @@ def fit_rf(cols_features, cols_labels, use_all_data=True, save_results=True, ver
                             cols_features=cols_features, 
                             cols_labels=cols_labels, 
                             model_hash=model_hash,
-                            use_all_data=use_all_data,
+                            fill_artificial_gaps=fill_artificial_gaps,
                             path_save=PATH_MODEL_TRAINING,
                             test_size=0.2)
         
@@ -253,5 +253,5 @@ def stepwise_forward_selection_rf(max_features=None, tol=0.01):
 
 
 if __name__ == '__main__':
-    fit_rf(cols_features=cols_features, cols_labels=cols_labels, use_all_data=use_all_data, save_results=True, verbose=True)
+    fit_rf(cols_features=cols_features, cols_labels=cols_labels, fill_artificial_gaps=fill_artificial_gaps, save_results=True, verbose=True)
     # stepwise_forward_selection_rf()
