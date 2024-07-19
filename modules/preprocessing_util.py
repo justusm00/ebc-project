@@ -273,7 +273,7 @@ def merge_data(df_fluxes, df_meteo, path_save):
 
 
 
-def create_artificial_gaps(df):
+def create_artificial_gaps(df, seed=42):
     """Add new column artifical_gap onto df (0 indicates no gap, 1 indicates short gap, 2 indicates long gap, 3 indicates very long gap)
 
     Args:
@@ -282,6 +282,8 @@ def create_artificial_gaps(df):
     Returns:
         _type_: _description_
     """
+    np.random.seed(seed)
+
     # create temporary time and timestamp columns
     # Convert the '30min' column to a timedelta representing the minutes
     df['time'] = pd.to_timedelta(df['30min'] * 30, unit='m')
