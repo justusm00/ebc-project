@@ -42,7 +42,7 @@ processEddyData <- function(df, column_name) {
 }
 
 
-compute_mse_for_location <- function(df, loc){
+gap_filling_mds <- function(df, loc){
   # filter for location
   df <- subset(df, location == loc)
   # Find the range of dates in your dataframe
@@ -101,10 +101,8 @@ compute_mse_for_location <- function(df, loc){
   
   
   
-  df_comp <- subset(df_orig, artificial_gap > 0)
-  
-  df_comp <- df_comp[complete.cases(df_comp[, c("H", "LE", "H_f", "LE_f")]), ]
-  
+
+  df_comp <- df_orig[complete.cases(df_orig[, c("H", "LE")]), ]
   
   return(df_comp)
 }
@@ -123,12 +121,25 @@ data$hour <- data$X30min * 0.5
 data <- subset(data, select = -X30min)
 
 
-df_comp_bg <- compute_mse_for_location(data, 0)
-df_comp_gw <- compute_mse_for_location(data, 1)
+df_comp_bg <- gap_filling_mds(data, 0)
+df_comp_bg$location <- 0
 
-dim(df_comp_bg)
+df_comp_gw <- gap_filling_mds(data, 1)
+df_comp_gw$location <- 1
 
-sum_squares = 0.5 * (sum((df_comp_bg$H - df_comp_bg$H_f)**2 + (df_comp_bg$LE - df_comp_bg$LE_f)**2) + sum((df_comp_gw$H - df_comp_gw$H_f)**2 + (df_comp_gw$LE - df_comp_gw$LE_f)**2))
 
-mse <- sum_squares / (nrow(df_comp_bg) + nrow(df_comp_gw) )
-mse
+df_combined <- rbind(df_comp_bg, df_comp_gw)
+
+# select only subset
+
+
+df_combined$X30min <- as.numeric(df_combined$Hour * 2)
+df_combined <- df_combined[, c("Year", "DoY", "location", "X30min", "H_f", "LE_f")]
+
+
+names(df_combined) <- c("year", "day_of_year", "location", "X30min", "H_f", "LE_f")
+
+
+
+write.csv(df_combined, file = "data/gapfilled/combined_gapfilled_mds.csv", row.names = FALSE)
+

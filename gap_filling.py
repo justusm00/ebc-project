@@ -24,6 +24,7 @@ filename_rf = 'RF_AGF_5286a2e3c84ebdb055490bea6c9dc91c.pkl' # rf trained on impo
 filename_rfsw = 'RF_AGF_6ee83c392c0d7208dd385e8558700ff9.pkl' # rf trained on keys + incoming shortwave radiation
 # filename_rfsw = None
 
+
 path_data = PATH_PREPROCESSED + 'data_merged_with_nans.csv'
 print_test_loss = True
 
@@ -128,7 +129,7 @@ def fill_gaps(path_data,
 
       
     # load data
-    data = pd.read_csv(path_data)
+    data = pd.read_csv(path_data).drop(["H_f", "LE_f"], axis=1)
 
     if fill_artificial_gaps:
         # copy original values
@@ -158,29 +159,26 @@ def fill_gaps(path_data,
         df_rfsw = gap_filling_rf(data=data, model=rfsw,
                                  cols_features=cols_features_rfsw, cols_labels=cols_labels, suffix=suffix_rf)
 
-    
 
 
     cols_gapfilled_mlp = [col.replace('_orig', '') + suffix_mlp for col in cols_labels]
     cols_gapfilled_rf = [col.replace('_orig', '') + suffix_rf for col in cols_labels]
-    cols_gapfilled_mds = [col.replace('_orig', '') + '_f' for col in cols_labels]
 
 
     print("Total number of records:", data.shape[0])
 
-    for col_mlp, col_rf, col_mds in zip(cols_gapfilled_mlp, cols_gapfilled_rf, cols_gapfilled_mds):
+    for col_mlp, col_rf in zip(cols_gapfilled_mlp, cols_gapfilled_rf):
         data[col_mlp] = df_mlp[col_mlp]
         data[col_rf] = df_rf[col_rf]
         print(f"Number of NaNs in {col_mlp}: {data[data[col_mlp].isna()].shape[0]}")
         print(f"Number of NaNs in {col_rf}: {data[data[col_rf].isna()].shape[0]}")
-        print(f"Number of NaNs in {col_mds}: {data[data[col_mds].isna()].shape[0]}")
 
 
         if filename_mlpsw:
             data[col_mlp] = data[col_mlp].fillna(df_mlpsw[col_mlp])
             print(f"Number of NaNs in {col_mlp} after adding SW data: {data[data[col_mlp].isna()].shape[0]}")
 
-        if filename_rf:
+        if filename_rfsw:
             data[col_rf] = data[col_rf].fillna(df_rfsw[col_rf])
             print(f"Number of NaNs in {col_rf} after adding SW data: {data[data[col_rf].isna()].shape[0]}")
 
@@ -193,19 +191,9 @@ def fill_gaps(path_data,
 
 
 
-    # Convert the '30min' column to a timedelta representing the minutes
-    data['time'] = pd.to_timedelta(data['30min'] * 30, unit='m')
-
-    # Create the datetime column by combining 'year', 'month', 'day' and 'time'
-    data['timestamp'] = pd.to_datetime(data[['year', 'month', 'day']]) + data['time']
-
-    # drop year, month, day columns
-    data = data.drop(['year', 'month', 'day', '30min', 'time'], axis=1)
-
-
     # filter by location and sort by timestamps
-    df_bg = data[data['location'] == 0].sort_values(by='timestamp')
-    df_gw = data[data['location'] == 1].sort_values(by='timestamp')
+    df_bg = data[data['location'] == 0].sort_values(by=['year', 'month', 'day', '30min'])
+    df_gw = data[data['location'] == 1].sort_values(by=['year', 'month', 'day', '30min'])
 
     # drop location columns
     df_bg = df_bg.drop('location', axis=1)
@@ -219,4 +207,5 @@ def fill_gaps(path_data,
 
 
 if __name__ == '__main__':
-    fill_gaps(path_data=path_data, filename_mlp=filename_mlp, filename_rf=filename_rf, filename_mlpsw=filename_mlpsw, filename_rfsw=filename_rfsw, print_test_loss=print_test_loss)
+    fill_gaps(path_data=path_data, filename_mlp=filename_mlp, filename_rf=filename_rf, filename_mlpsw=filename_mlpsw,
+              filename_rfsw=filename_rfsw, print_test_loss=print_test_loss)
