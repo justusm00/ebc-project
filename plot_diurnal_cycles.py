@@ -2,6 +2,8 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from modules.paths import PATH_GAPFILLED, PATH_PLOTS
+plt.rcParams['font.size'] = 14
+
 
 
 def plot_diurnal_cycles(path_gapfilled, path_plots):
@@ -60,7 +62,7 @@ def plot_diurnal_cycles(path_gapfilled, path_plots):
     df_bg = aggregate_data(df_bg)
 
     # # plot diurnal cycles
-    fig, axs = plt.subplots(4, 2, figsize =(20, 8), dpi=600)
+    fig, axs = plt.subplots(4, 2, figsize =(20, 8))
 
     for ax in axs.flatten():
         ax.set_xticks([])  # Remove x-ticks
@@ -84,11 +86,11 @@ def plot_diurnal_cycles(path_gapfilled, path_plots):
         ax.legend()
 
     plt.tight_layout()
-    plt.savefig(PATH_PLOTS + 'diurnal_cycles/diurnal_cycles_comparison.png')
+    plt.savefig(PATH_PLOTS + 'diurnal_cycles/diurnal_cycles_comparison.pdf', dpi=150)
 
 
     # plot energy gaps
-    plt.figure(figsize=(12, 4), dpi=600)
+    plt.figure(figsize=(12, 4))
     for df, location in zip([df_bg, df_gw], ["BG", "GW"]):
         for alg, suffix in zip(['OG', 'MDS', 'MLP', 'RF'], ['_orig', '_f_mds', '_f_mlp', '_f_rf']):
             if alg == "OG":
@@ -104,9 +106,23 @@ def plot_diurnal_cycles(path_gapfilled, path_plots):
     plt.ylabel("EBC gap in $W/m^2$")
     plt.tight_layout()
     # plt.show()
-    plt.savefig(PATH_PLOTS + 'diurnal_cycles/energy_balances_closure.png')
+    plt.savefig(PATH_PLOTS + 'diurnal_cycles/energy_balances_closure.pdf', dpi=150)
+
+
+    # plot only soil heatflux for gw
+    plt.figure(figsize=(12, 4))
+    plt.plot(df_gw["time"], df_gw["G"])
+    plt.legend()
+    plt.xticks(df_bg["time"][::2], rotation=45)
+    plt.xlabel("Time")
+    plt.ylabel("Soil heatflux $G$ in $W/m^2$")
+    plt.tight_layout()
+    # plt.show()
+    plt.savefig(PATH_PLOTS + 'diurnal_cycles/soil_heatflux_gw.pdf', dpi=150)
   
 
+
+  
     print(f"Saved figures to {PATH_PLOTS + 'diurnal_cycles/'}")
 
             
