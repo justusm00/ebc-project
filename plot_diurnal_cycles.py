@@ -18,13 +18,31 @@ def plot_diurnal_cycles(path_gapfilled, path_plots):
     df_gw = pd.read_csv(PATH_GAPFILLED + 'GW_gapfilled.csv')
     df_bg = pd.read_csv(PATH_GAPFILLED + 'BG_gapfilled.csv')
 
+    # merge mds data
+    df_mds = pd.read_csv(PATH_GAPFILLED + 'combined_gapfilled_mds.csv')
+    df_mds["30min"] = df_mds["X30min"]
+    df_mds["H_f_mds"] = df_mds["H_f"]
+    df_mds["LE_f_mds"] = df_mds["LE_f"]
+    df_mds.drop(["X30min", "H_f", "LE_f"], axis=1, inplace=True)
+    df_bg_mds = df_mds[df_mds["location"] == 0]
+    df_gw_mds = df_mds[df_mds["location"] == 1]
+    df_bg_mds.drop("location", axis=1, inplace=True)
+    df_gw_mds.drop("location", axis=1, inplace=True)
+
+    df_bg = df_bg.merge(df_bg_mds, on=["30min", "year", "day_of_year"], how="outer")
+    df_gw = df_gw.merge(df_gw_mds, on=["30min", "year", "day_of_year"], how="outer")
+
+
     # filter for 2024
-    df_gw = df_gw[df_gw["timestamp"] > '2024-01-01 00:00:00']
-    df_bg = df_bg[df_bg["timestamp"] > '2024-01-01 00:00:00']
+    df_gw = df_gw[df_gw["year"] == 2024]
+    df_bg = df_bg[df_bg["year"] == 2024]
 
     # add time column
-    df_gw['time'] = pd.to_datetime(df_gw['timestamp']).dt.strftime('%H:%M:%S')
-    df_bg['time'] = pd.to_datetime(df_bg['timestamp']).dt.strftime('%H:%M:%S')
+    df_gw['time'] = df_gw['30min'].apply(lambda x: pd.Timedelta(minutes=30 * x))
+    df_bg['time'] = df_bg['30min'].apply(lambda x: pd.Timedelta(minutes=30 * x))
+    df_bg['time'] = df_bg['time'].apply(lambda x: f"{x.components.hours:02}:{x.components.minutes:02}")
+    df_gw['time'] = df_gw['time'].apply(lambda x: f"{x.components.hours:02}:{x.components.minutes:02}")
+
 
     # add net radiation
     df_gw["Q"] = df_gw["netRadiation"]  
@@ -32,8 +50,8 @@ def plot_diurnal_cycles(path_gapfilled, path_plots):
 
 
     def aggregate_data(df):
-        df_agg = df.groupby("time").agg(G=("soilHeatflux", "mean"), H_orig = ("H_orig", "mean"), H_f=("H_f", "mean"),
-                                        H_f_mlp=("H_f_mlp", "mean"), H_f_rf=("H_f_rf", "mean"),  LE_orig=("LE_orig", "mean"), LE_f=("LE_f", "mean"),
+        df_agg = df.groupby("time").agg(G=("soilHeatflux", "mean"), H_orig = ("H_orig", "mean"), H_f_mds=("H_f_mds", "mean"),
+                                        H_f_mlp=("H_f_mlp", "mean"), H_f_rf=("H_f_rf", "mean"),  LE_orig=("LE_orig", "mean"), LE_f_mds=("LE_f_mds", "mean"),
                                         LE_f_mlp=("LE_f_mlp", "mean"), LE_f_rf=("LE_f_rf", "mean"), Q=("Q", "mean")).reset_index()
         return df_agg
 
@@ -72,7 +90,7 @@ def plot_diurnal_cycles(path_gapfilled, path_plots):
     # plot energy gaps
     plt.figure(figsize=(12, 4), dpi=600)
     for df, location in zip([df_bg, df_gw], ["BG", "GW"]):
-        for alg, suffix in zip(['OG', 'MDS', 'MLP', 'RF'], ['_orig', '_f', '_f_mlp', '_f_rf']):
+        for alg, suffix in zip(['OG', 'MDS', 'MLP', 'RF'], ['_orig', '_f_mds', '_f_mlp', '_f_rf']):
             if alg == "OG":
                 label = location + ", Original Data"
                 linestyle = '-'
@@ -85,8 +103,9 @@ def plot_diurnal_cycles(path_gapfilled, path_plots):
     plt.xlabel("Time")
     plt.ylabel("EBC gap in $W/m^2$")
     plt.tight_layout()
-    plt.savefig(PATH_PLOTS + 'diurnal_cycles/energy_balances_closure.png')
     # plt.show()
+    plt.savefig(PATH_PLOTS + 'diurnal_cycles/energy_balances_closure.png')
+  
 
     print(f"Saved figures to {PATH_PLOTS + 'diurnal_cycles/'}")
 
