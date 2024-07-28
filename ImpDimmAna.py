@@ -9,7 +9,7 @@ import seaborn as sns
 from sklearn.model_selection import train_test_split
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.multioutput import MultiOutputRegressor
-from modules.paths import PATH_PREPROCESSED
+from modules.paths import PATH_PREPROCESSED, PATH_PLOTS
 from modules.columns import COLS_FEATURES_ALL
 
 data = pd.read_csv(PATH_PREPROCESSED + 'data_merged_with_nans.csv')
@@ -19,7 +19,7 @@ data.head()
 
 # Do the analysis for H & LE -> Drop from data
 y = data[['H_orig', 'LE_orig']]
-X = data[[col for col in COLS_FEATURES_ALL if col not in ["day", "month"]]]
+X = data[[col for col in COLS_FEATURES_ALL if col not in ["day", "month", "soilHeatflux"]]]
 X.head()
 
 # Train-test-split and fitting the Decision trees
@@ -44,8 +44,8 @@ H_importance_df = H_importance_df.sort_values(by='importance', ascending=False)
 
 plt.figure()
 sns.barplot(x='importance', y='feature', data=H_importance_df)
-plt.title('Feature importance for H')
-plt.show()
+plt.tight_layout()
+plt.savefig(PATH_PLOTS + "importanceH.png", dpi=150)
 
 # Visualization of immportances for H
 LE_importance = DtreeLE.feature_importances_
@@ -57,7 +57,8 @@ LE_importance_df = LE_importance_df.sort_values(by='importance', ascending=False
 plt.figure()
 sns.barplot(x='importance', y='feature', data=LE_importance_df)
 plt.title('Feature importance for LE')
-plt.show()
+plt.tight_layout()
+plt.savefig(PATH_PLOTS + "importanceLE.png", dpi=150)
 
 # Visualization of importances for both combined
 Comb_importance = np.mean([estimator.feature_importances_ for estimator in Mout.estimators_], axis=0) # Mean of feature importances
@@ -68,7 +69,8 @@ Comb_importance_df = Comb_importance_df.sort_values(by='importance', ascending=F
 plt.figure()
 sns.barplot(x='importance', y='feature', data=Comb_importance_df)
 plt.title('Feature importance for both fluxes combined')
-plt.show()
+plt.tight_layout()
+plt.savefig(PATH_PLOTS + "importanceBoth.png", dpi=150)
 
 # Subplot containing all
 

@@ -84,7 +84,6 @@ def plot_diurnal_cycles(path_gapfilled, path_plots):
     for ax in axs.flatten():
         ax.set_ylabel("Energy in $W/m^2$")
         ax.legend()
-
     plt.tight_layout()
     plt.savefig(PATH_PLOTS + 'diurnal_cycles/diurnal_cycles_comparison.pdf', dpi=150)
 
@@ -100,11 +99,11 @@ def plot_diurnal_cycles(path_gapfilled, path_plots):
                 label = location +", Gapfilled " + alg
                 linestyle = '--'
             plt.plot(df["time"], df["Q"] - df["G"] - df["H" + suffix] - df["LE" + suffix], label=label, linestyle=linestyle)
-    plt.legend()
     plt.xticks(df_bg["time"][::2], rotation=45)
     plt.xlabel("Time")
     plt.ylabel("EBC gap in $W/m^2$")
     plt.tight_layout()
+    plt.grid()
     # plt.show()
     plt.savefig(PATH_PLOTS + 'diurnal_cycles/energy_balances_closure.pdf', dpi=150)
 
@@ -112,11 +111,11 @@ def plot_diurnal_cycles(path_gapfilled, path_plots):
     # plot only soil heatflux for gw
     plt.figure(figsize=(12, 4))
     plt.plot(df_gw["time"], df_gw["G"])
-    plt.legend()
     plt.xticks(df_bg["time"][::2], rotation=45)
     plt.xlabel("Time")
     plt.ylabel("Soil heatflux $G$ in $W/m^2$")
     plt.tight_layout()
+    plt.grid()
     # plt.show()
     plt.savefig(PATH_PLOTS + 'diurnal_cycles/soil_heatflux_gw.pdf', dpi=150)
   
