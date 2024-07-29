@@ -61,35 +61,11 @@ def plot_diurnal_cycles(path_gapfilled, path_plots):
     df_gw = aggregate_data(df_gw)
     df_bg = aggregate_data(df_bg)
 
-    # # plot diurnal cycles
-    fig, axs = plt.subplots(4, 2, figsize =(20, 8))
-
-    for ax in axs.flatten():
-        ax.set_xticks([])  # Remove x-ticks
-        ax.set_xticklabels([])
-
-    fig.suptitle("Energy Balance Closure components")
-    axs[0, 0].set_title("Botanical Garden")
-    axs[0, 1].set_title("Göttingen Forest")
-    for i, df, location in zip([0, 1], [df_bg, df_gw], ["BG", "GW"]):
-        for j, col in enumerate(["Q", "H_orig", "LE_orig" ,"G"]):
-            axs[j, i].plot(df["time"], df[col], label=col)
-            if j == 3:
-                axs[3, i].set_xticks(df["time"][::2]) 
-                axs[3, i].set_xticklabels(df["time"][::2]) 
-                axs[3, i].tick_params(axis='x', rotation=45)
 
 
 
-    for ax in axs.flatten():
-        ax.set_ylabel("Energy in $W/m^2$")
-        ax.legend()
-    plt.tight_layout()
-    plt.savefig(PATH_PLOTS + 'diurnal_cycles/diurnal_cycles_comparison.pdf', dpi=150)
-
-
-    # plot energy gaps
-    plt.figure(figsize=(12, 4))
+    # plot energy components and gaps
+    fig, axs = plt.subplots(1, 2, figsize=(12,4), sharey=True)
     for df, location in zip([df_bg, df_gw], ["BG", "GW"]):
         for alg, suffix in zip(['OG', 'MDS', 'MLP', 'RF'], ['_orig', '_f_mds', '_f_mlp', '_f_rf']):
             if alg == "OG":
@@ -98,26 +74,52 @@ def plot_diurnal_cycles(path_gapfilled, path_plots):
             else:
                 label = location +", Gapfilled " + alg
                 linestyle = '--'
-            plt.plot(df["time"], df["Q"] - df["G"] - df["H" + suffix] - df["LE" + suffix], label=label, linestyle=linestyle)
-    plt.xticks(df_bg["time"][::2], rotation=45)
+    axs[0].plot(df_bg["time"], df_bg["Q"], label="$Q_n$")
+    axs[0].plot(df_bg["time"], df_bg["H_f_rf"], label="$H$")
+    axs[0].plot(df_bg["time"], df_bg["LE_f_rf"], label="$\lambda E$")
+    axs[0].plot(df_bg["time"], df_bg["Q"] - df_bg["G"] - df_bg["H_f_rf"] - df_bg["LE_f_rf"], label="Res")
+    axs[0].plot(df_bg["time"], df_bg["G"], label="$G$")
+
+    # leave out G for GW
+    axs[1].plot(df_gw["time"], df_gw["Q"], label="$Q_n$")
+    axs[1].plot(df_gw["time"], df_gw["H_f_rf"], label="$H$")
+    axs[1].plot(df_gw["time"], df_gw["LE_f_rf"], label="$\lambda E$")
+    axs[1].plot(df_gw["time"], df_gw["Q"] - df_gw["H_f_rf"] - df_gw["LE_f_rf"], label="Res")
+    for ax in axs.flatten():
+        ax.set_xticks(df_bg["time"][::4])
+        ax.set_xticklabels(df_bg["time"][::4], rotation=45)
+        ax.set_xlabel("Time")
+        ax.grid()
+        ax.legend()
+    axs[0].set_ylabel("Energy in $W/m^2$")
+
     plt.xlabel("Time")
-    plt.ylabel("EBC gap in $W/m^2$")
     plt.tight_layout()
-    plt.grid()
     # plt.show()
+    # plt.legend()
     plt.savefig(PATH_PLOTS + 'diurnal_cycles/energy_balances_closure.pdf', dpi=150)
 
 
+
+
+
+
+
     # plot only soil heatflux for gw
-    plt.figure(figsize=(12, 4))
-    plt.plot(df_gw["time"], df_gw["G"])
-    plt.xticks(df_bg["time"][::2], rotation=45)
-    plt.xlabel("Time")
-    plt.ylabel("Soil heatflux $G$ in $W/m^2$")
+    fig, axs = plt.subplots(1, 2, figsize=(12,4))
+    axs[1].plot(df_gw["time"], df_gw["G"])
+    axs[0].plot(df_bg["time"], df_bg["G"])
+    axs[0].set_ylabel("Soil heatflux $G$ in $W/m^2$")
+
+
+    for ax in axs:
+        ax.set_xticks(df_gw["time"][::4])
+        ax.set_xticklabels(df_gw["time"][::4], rotation=45)        
+        ax.set_xlabel("Time")
+        ax.grid()
     plt.tight_layout()
-    plt.grid()
     # plt.show()
-    plt.savefig(PATH_PLOTS + 'diurnal_cycles/soil_heatflux_gw.pdf', dpi=150)
+    plt.savefig(PATH_PLOTS + 'diurnal_cycles/soil_heatflux_both.pdf', dpi=150)
   
 
 
