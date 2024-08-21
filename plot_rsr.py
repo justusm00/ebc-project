@@ -50,7 +50,7 @@ def plot_rsr():
 
 
     def plot_rsr_for_var(variable):
-        fig, axs = plt.subplots(1, len(locs_all), figsize=(15, 5))
+        fig, axs = plt.subplots(1, len(locs_all), figsize=(15, 5), sharey=True)
         
         if len(locs_all) == 1:
             axs = [axs]
