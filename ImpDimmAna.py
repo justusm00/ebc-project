@@ -11,15 +11,32 @@ from sklearn.tree import DecisionTreeRegressor
 from sklearn.multioutput import MultiOutputRegressor
 from modules.paths import PATH_PREPROCESSED, PATH_PLOTS
 from modules.columns import COLS_FEATURES_ALL
+plt.rcParams['font.size'] = 14
+
+
+# map feature names to feature symbols
+feature_symbols = {"incomingShortwaveRadiation": "$R_{in,SW}$",
+                   "location": "loc",
+                   "soilTemperature": "$T_{soil}$",
+                   "airTemperature": "$T_{air}$",
+                   "day_of_year": "DoY",
+                   "windSpeed": "$w$",
+                   "30min": "30min",
+                   "airPressure": "$P_{air}$",
+                   "waterPressureDeficit": "$VPD$",
+                   "relativeHumidity": "$rH$",
+                   "year": "year"}
 
 data = pd.read_csv(PATH_PREPROCESSED + 'data_merged_with_nans.csv')
 data = data.dropna() # Drop all nans for this analyis
 data = data.drop("netRadiation", axis=1) # drop netRadiation since it is highly correlated to incomingShortwaveRadiation
+data = data.drop("waterVaporPressure", axis=1) # drop waterVaporPressure since who cares about it anyway
+
 data.head()
 
 # Do the analysis for H & LE -> Drop from data
 y = data[['H_orig', 'LE_orig']]
-X = data[[col for col in COLS_FEATURES_ALL if col not in ["day", "month", "soilHeatflux"]]]
+X = data[[col for col in COLS_FEATURES_ALL if col not in ["day", "month", "soilHeatflux", "waterVaporPressure"]]]
 X.head()
 
 # Train-test-split and fitting the Decision trees
@@ -42,10 +59,6 @@ feature_names = X.columns
 H_importance_df = pd.DataFrame({'feature': feature_names, 'importance': H_importance})
 H_importance_df = H_importance_df.sort_values(by='importance', ascending=False)
 
-plt.figure()
-sns.barplot(x='importance', y='feature', data=H_importance_df)
-plt.tight_layout()
-plt.savefig(PATH_PLOTS + "importanceH.png", dpi=150)
 
 # Visualization of immportances for H
 LE_importance = DtreeLE.feature_importances_
@@ -54,34 +67,37 @@ LE_importance = DtreeLE.feature_importances_
 LE_importance_df = pd.DataFrame({'feature': feature_names, 'importance': LE_importance})
 LE_importance_df = LE_importance_df.sort_values(by='importance', ascending=False)
 
-plt.figure()
-sns.barplot(x='importance', y='feature', data=LE_importance_df)
-plt.title('Feature importance for LE')
-plt.tight_layout()
-plt.savefig(PATH_PLOTS + "importanceLE.png", dpi=150)
-
 # Visualization of importances for both combined
 Comb_importance = np.mean([estimator.feature_importances_ for estimator in Mout.estimators_], axis=0) # Mean of feature importances
 
 Comb_importance_df = pd.DataFrame({'feature': feature_names, 'importance': Comb_importance})
 Comb_importance_df = Comb_importance_df.sort_values(by='importance', ascending=False)
 
-plt.figure()
-sns.barplot(x='importance', y='feature', data=Comb_importance_df)
-plt.title('Feature importance for both fluxes combined')
+
+# Assuming the DataFrames have 'feature' and 'importance' columns, add a new column to distinguish them
+Comb_importance_df['type'] = 'Both Fluxes'
+H_importance_df['type'] = '$H$'
+LE_importance_df['type'] = '$\lambda E$'
+
+# Combine the DataFrames
+combined_df = pd.concat([Comb_importance_df, H_importance_df, LE_importance_df])
+
+# add symbol name
+combined_df["feature_symbol"] = combined_df["feature"].apply(lambda x: feature_symbols[x])
+
+# Create the plot
+plt.figure(figsize=(12, 8))
+sns.barplot(y='importance', x='feature_symbol', hue='type', data=combined_df)
+plt.xlabel("variable")
+plt.ylabel("importance")
+plt.legend(title=None)
+
+
+# Set the title and layout
 plt.tight_layout()
-plt.savefig(PATH_PLOTS + "importanceBoth.png", dpi=150)
 
-# Subplot containing all
+# Save the plot
+plt.savefig(PATH_PLOTS + "importance/importance_all_combined.png", dpi=150)
 
-colors = sns.color_palette("tab10", len(feature_names)) # Some colors for better readability
-color_mapping = {feature_names[i]: colors[i] for i in range(len(feature_names))}
-
-fig, ax = plt.subplots(1,3, figsize=(18,6), sharex=True, sharey=True)
-sns.barplot(x='importance', y='feature', data=Comb_importance_df, ax=ax[0], palette=color_mapping)
-sns.barplot(x='importance', y='feature', data=H_importance_df, ax=ax[1], palette=color_mapping)
-sns.barplot(x='importance', y='feature', data=LE_importance_df, ax=ax[2], palette=color_mapping)
-ax[0].set_title("Immportances for both fluxes")
-ax[1].set_title("Immportances for H")
-ax[2].set_title("Immportances for LE")
-plt.tight_layout()
+# Show the plot
+plt.show()
