@@ -5,6 +5,8 @@ more_data/
 plots/analysis/
 
 
+results__timeseries.txt
+
 # notebook
 *.ipynb
 
