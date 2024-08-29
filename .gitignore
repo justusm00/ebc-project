@@ -3,6 +3,8 @@
 ebc-project/ 
 more_data/
 
+results__timeseries.txt
+
 # notebook
 *.ipynb
 

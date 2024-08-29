@@ -8,31 +8,177 @@ import pandas as pd
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 import fastprogress
 from sklearn.metrics import mean_squared_error
 
-from modules.dataset_util import grab_data
+from torch.utils.data import DataLoader
+from modules.dataset_util import SplittedTimeSeries
 from modules.paths import PATH_MODEL_TRAINING, PATH_PREPROCESSED
 from modules.MLPstuff import EarlyStopper
+from modules.util import transform_timestamp
 
+#### SEEDING ####
+SEED = 42
+np.random.seed(SEED)
+torch.manual_seed(42)
+# If using CUDA (GPU)
+if torch.cuda.is_available():
+    torch.cuda.manual_seed(42)
 
 class LSTMModel(nn.Module):
-    def __init__(self, input_size, hidden_size, num_layers, output_size):
+    def __init__(self, input_size, hidden_size, num_layers, output_size, dropout=0.2, bidirectional=True):
         super(LSTMModel, self).__init__()
         self.hidden_size = hidden_size
         self.num_layers = num_layers
-        self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True)
+        self.bidirectional = bidirectional
+
+        # LSTM layer with dropout between layers (if num_layers > 1)
+        self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True, dropout=dropout if num_layers > 1 else 0, bidirectional=bidirectional)
+
+        # Dropout after LSTM output before FC layer
+        self.dropout = nn.Dropout(dropout)
+
+        # Fully connected layer
         self.fc = nn.Linear(hidden_size, output_size)
+        self.fc2 = nn.Linear(hidden_size, hidden_size)
+        if bidirectional==True:
+            self.fc = nn.Linear(hidden_size*2, output_size)
+            self.fc2 = nn.Linear(hidden_size*2, hidden_size*2)
         
     def forward(self, x):
-        #x = x.transpose(1,2) # Input Features are supposed to be in the last dimension
-        h0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size).to(x.device)
-        c0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size).to(x.device)
+        # Initialize hidden state and cell state
+        h0 = torch.zeros(self.num_layers * (2 if self.bidirectional else 1), x.size(0), self.hidden_size).to(x.device)
+        c0 = torch.zeros(self.num_layers * (2 if self.bidirectional else 1), x.size(0), self.hidden_size).to(x.device)
+
+        # LSTM forward pass
         out, _ = self.lstm(x, (h0, c0))
-        out = self.fc(out[:, -1, :])  # Use the last time step's output for prediction
+
+        # Apply dropout to the last hidden state (after LSTM)
+        out = self.dropout(out[:, -1, :])  # Use the last time step's output for prediction
+
+        # Fully connected layer
+        #out = F.relu(self.fc2(out))
+        out = self.fc(out)
+        return out
+
+
+# LSTM CNN hybrid model
+class LSTMCNN(nn.Module):
+    def __init__(self, input_size, hidden_size, num_layers, output_size, dropout=0.2, bidirectional=False, cnn_out_channels=64, kernel_size=3):
+        super(LSTMCNN, self).__init__()
+        self.hidden_size = hidden_size
+        self.num_layers = num_layers
+        self.bidirectional = bidirectional
+
+        # CNN Layer (1D Convolution for time series data)
+        self.cnn = nn.Conv1d(in_channels=input_size, out_channels=cnn_out_channels, kernel_size=kernel_size, padding=1)
+        self.cnn_pool = nn.MaxPool1d(kernel_size=2)  # Optional: Use max pooling to reduce dimensionality
+
+        # LSTM Layer
+        self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True, 
+                            dropout=dropout if num_layers > 1 else 0, bidirectional=bidirectional)
+
+        # Dropout after LSTM and CNN output before fully connected layers
+        self.dropout = nn.Dropout(dropout)
+
+        # Fully connected layer
+        lstm_output_size = hidden_size * 2 if bidirectional else hidden_size
+        combined_input_size = cnn_out_channels + lstm_output_size  # CNN + LSTM output sizes
+
+        self.fc1 = nn.Linear(combined_input_size, 128)
+        self.fc2 = nn.Linear(128, 64)
+        self.fc_out = nn.Linear(64, output_size)
+
+        # Activation function
+        self.relu = nn.ReLU()
+
+    def forward(self, x):
+        # CNN branch
+        x_cnn = x.permute(0, 2, 1)  # Change to [batch_size, features, seq_length] for Conv1D
+        x_cnn = self.cnn(x_cnn)  # Apply convolution
+        x_cnn = self.relu(x_cnn)
+        x_cnn = self.cnn_pool(x_cnn)  # Apply pooling (optional)
+        x_cnn = x_cnn.mean(dim=-1)  # Global average pooling (optional)
+
+        # LSTM branch
+        h0 = torch.zeros(self.num_layers * (2 if self.bidirectional else 1), x.size(0), self.hidden_size).to(x.device)
+        c0 = torch.zeros(self.num_layers * (2 if self.bidirectional else 1), x.size(0), self.hidden_size).to(x.device)
+
+        x_lstm, _ = self.lstm(x, (h0, c0))
+        x_lstm = self.dropout(x_lstm[:, -1, :])  # Take output from last time step
+
+        # Concatenate CNN and LSTM outputs
+        x_combined = torch.cat((x_cnn, x_lstm), dim=1)
+
+        # Fully connected layers
+        # x_combined = self.relu(self.fc1(x_combined))
+        # x_combined = self.relu(self.fc2(x_combined))
+        
+        # Final output layer
+        out = self.fc_out(x_combined)
         return out
     
+    # LSTM CNN hybrid model
+class LSTMCNN_maxed(nn.Module):
+    def __init__(self, input_size, hidden_size, num_layers, output_size, dropout=0.2, bidirectional=False, cnn_out_channels=64, kernel_size=3):
+        super(LSTMCNN_maxed, self).__init__()
+        self.hidden_size = hidden_size
+        self.num_layers = num_layers
+        self.bidirectional = bidirectional
+
+        # CNN Layer (1D Convolution for time series data)
+        self.conv1 = nn.Conv1d( in_channels=input_size, out_channels=cnn_out_channels, kernel_size = kernel_size ) # Output is 16*37
+        self.conv2 = nn.Conv1d( in_channels=cnn_out_channels, out_channels=cnn_out_channels, kernel_size=kernel_size)
+
+        self.MP1 = nn.MaxPool1d( kernel_size=2)
+
+        # LSTM Layer
+        self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True, 
+                            dropout=dropout if num_layers > 1 else 0, bidirectional=bidirectional)
+
+        # Dropout after LSTM and CNN output before fully connected layers
+        self.dropout = nn.Dropout(dropout)
+
+        # Fully connected layer
+        lstm_output_size = hidden_size * 2 if bidirectional else hidden_size
+        combined_input_size = cnn_out_channels + lstm_output_size  # CNN + LSTM output sizes
+
+        self.fc1 = nn.Linear( combined_input_size, 80) # 64 Output channels with a size of (ws-12-6-2)
+        self.fc2 = nn.Linear( 80, 80)
+        self.fc3 = nn.Linear( 80, 2)
+        #self.fc_out = nn.Linear(64, output_size)
+
+        # Activation function
+        self.relu = nn.ReLU()
+
+    def forward(self, x):
+        # CNN branch
+        x_cnn = x.permute(0, 2, 1)  # Change to [batch_size, features, seq_length] for Conv1D
+        x_cnn = self.relu( self.conv1(x_cnn) )
+        x_cnn = self.MP1( self.relu( self.conv2(x_cnn) ) )
+        x_cnn = torch.flatten(x_cnn, 1)
+
+        # LSTM branch
+        h0 = torch.zeros(self.num_layers * (2 if self.bidirectional else 1), x.size(0), self.hidden_size).to(x.device)
+        c0 = torch.zeros(self.num_layers * (2 if self.bidirectional else 1), x.size(0), self.hidden_size).to(x.device)
+
+        x_lstm, _ = self.lstm(x, (h0, c0))
+        x_lstm = self.dropout(x_lstm[:, -1, :])  # Take output from last time step
+
+        # Concatenate CNN and LSTM outputs
+        x_combined = torch.cat((x_cnn, x_lstm), dim=1)
+
+        # Fully connected layers
+        # x_combined = self.relu(self.fc1(x_combined))
+        # x_combined = self.relu(self.fc2(x_combined))
+        
+        # Final output layer
+        out = self.relu(self.dropout(self.fc1(x_combined)))
+        out = self.relu(self.dropout(self.fc2(out)))
+        out = self.fc3(out)
+        return out
 
 
 
@@ -258,13 +404,14 @@ def extract_subseries(df, window_size, features, labels, index=0, n_aug=0):
 
         # Make sure that none of the important features of the window contain NaNs
         if window[features + labels].isna().sum().sum() == 0:
-            window['series_id'] = index
-            subseries.append( window.reset_index(drop=True) )
+            window_selected = window[features + labels].copy(deep=True) # Extract selected features and labels
+            window_selected['series_id'] = index
+            subseries.append( window_selected.reset_index(drop=True) )
             index += 1
 
             # Now create the augmentations by adding Gaussian noise to them
             for _ in range(n_aug):
-                window_aug = window.copy(deep=True)
+                window_aug = window_selected.copy(deep=True)
 
                 for lab in labels:
                     noise = np.random.normal(0, 1, size=window_size)
@@ -326,6 +473,29 @@ def grab_series_data(window_size, features, labels, n_aug=0):
 
 
 
+def normalize_features(train_data, val_data, test_data, features):
+    # Extract the feature columns that need to be normalized
+    train_features = train_data[features].copy(deep=True)
+    val_features = val_data[features].copy(deep=True)
+    test_features = test_data[features].copy(deep=True)
+    
+    # Initialize the scaler
+    scaler = StandardScaler()
+
+    # Fit on the training data and transform it
+    train_features_normalized = scaler.fit_transform(train_features)
+
+    # Use the same scaler (fitted on training data) to transform validation and test data
+    val_features_normalized = scaler.transform(val_features)
+    test_features_normalized = scaler.transform(test_features)
+
+    # Replace the feature columns in the original data with the normalized values
+    train_data.loc[:, features] = train_features_normalized
+    val_data.loc[:, features] = val_features_normalized
+    test_data.loc[:, features] = test_features_normalized
+
+    return train_data, val_data, test_data
+
 # Create split and data loaders
 def Splitted_SplitLoader(series_data, series_targets, batch_size):
     # Create array of all possible indices
@@ -357,12 +527,14 @@ def Splitted_SplitLoader(series_data, series_targets, batch_size):
     labels_val = series_targets[ series_data['series_id'].isin( val_idxs ) ]
     labels_test = series_targets[ series_data['series_id'].isin( test_idxs ) ]
 
+    data_train, data_val, data_test = normalize_features(data_train, data_val, data_test, FEATURES)
+
     trainset = SplittedTimeSeries(data_train, labels_train)
     valset = SplittedTimeSeries(data_val, labels_val)
     testset = SplittedTimeSeries(data_test, labels_test)
 
-    trainloader = DataLoader(trainset, batch_size=batch_size, num_workers=0)
-    valloader = DataLoader(valset, batch_size=batch_size, num_workers=0)
-    testloader = DataLoader(testset, batch_size=batch_size, num_workers=0)
+    trainloader = DataLoader(trainset, batch_size=batch_size, num_workers=0, shuffle=True)
+    valloader = DataLoader(valset, batch_size=batch_size, num_workers=0, shuffle=True)
+    testloader = DataLoader(testset, batch_size=batch_size, num_workers=0, shuffle=True)
 
     return trainloader, valloader, testloader
