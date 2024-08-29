@@ -44,6 +44,14 @@ source("requirements.R") in RStudio
 Run script preprocessing_pipeline.py. This creates the following files: 
 - data_merged_with_nans.csv, flux_data_preprocessed.csv and meteo_data_preprocessed.csv under PATH_PREPROCESSED
 - test_data.csv and training_data.csv under PATH_MODEL_TRAINING
+
+The script also tries to create artificial gaps for later model evaluation. For this purpose, a new column "artificial_gap" is created. Three different gap lengths are created, indiciated as follows:
+- small gaps (1 day) - 1 
+- long gaps (7 days) - 2
+- very long gaps (30 days) - 3
+
+A valid gap must contain at least 50% non-na values in the relevant columns.
+
 The columns that should be gapfilled are assumed to have the format COL_NAME_orig. If you want to gapfill columns that don't end on _orig, you need to modify their column names in the preprocessing script.
 
 ## MLP Training
@@ -51,6 +59,7 @@ The columns that should be gapfilled are assumed to have the format COL_NAME_ori
 In MLP.py, you need to specify:
 - features
 - labels
+- fill_artificial_gaps T/F 
 - normalization T/F
 - minmax_scaling T/F
 - your initials (here you can also put any arbitrary string)
@@ -58,7 +67,7 @@ In MLP.py, you need to specify:
 
 When running the script, the model name is automatically created. The features and and labels are saved under model_saves/features and model_saves/labels, so that they can later be loaded for the gap filling. For each unique configuration of features/labels, a hash is created and added to the model name. This way, it is possible to easily train the same model architecture with different features / labels and use it directly for prediction without having to redefine anything in columns.py.
 
-It is tried to load the train and test data for the given feature / label combination. If none is available, the train test split is performed and saved to data/training (the indices are stored in a .pkl that contains a dictionary - this is more memory efficient and allows for unique identification in the original dataset).
+It is tried to load the train and test data for the given feature / label combination. If none is available, the train test split is performed and saved to data/training (the indices are stored in a .pkl that contains a dictionary - this is more memory efficient and allows for unique identification in the original dataset). If fill_artificial_gaps is set to True, the testset will consist of the artificial gaps.
 
 If normalization is set to True, the trainset statistics (mean and standard deviation) are saved to model_saves/mlp/statistics. It is important that the trainset statistics are used also to normalize the testset or new, unlabeled data. Similarly, minmax_scaling can be used instead of normalization. If both normalization and minmax_scaling are set to True, an error is raised since it does not make sense to use both.
 

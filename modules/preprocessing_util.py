@@ -1,5 +1,6 @@
 import os
 import pandas as pd
+import numpy as np
 from tqdm import tqdm
 
 from soil.soil import fill_thermal_conductivity, compute_soil_heatflux
@@ -10,7 +11,14 @@ from modules.columns import COLS_KEY
 
 
 
-######## Script to automate data preprocessing and merging
+##### Script to automate data preprocessing and merging
+##### It takes all the files flux and meteo data for the two sites (BG and GW) from data/raw, converts relevant columns, keeps common columns, discards other columns, merges everything together
+
+
+
+
+
+
 
 def preprocess_flux_data(path_raw, path_save, cols):
     """Preprocess flux data - transform timestamp, convert numerical columns to float and keep only relevant columns.
@@ -262,3 +270,95 @@ def merge_data(df_fluxes, df_meteo, path_save):
     df['day_of_year'] = df.apply(get_day_of_year, axis=1)
 
     return df
+
+
+
+def create_artificial_gaps(df, seed=42, max_iter=100, total_gap_ratio=0.2, short_gap_ratio=0.20, long_gap_ratio=0.30, very_long_gap_ratio=0.50,
+                                 short_gap_length=48, long_gap_length=7*48, very_long_gap_length=30*48, verbose=True):
+    """Add new column artifical_gap onto df (0 indicates no gap, 1 indicates short gap, 2 indicates long gap, 3 indicates very long gap)
+
+    Args:
+        df (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """
+    np.random.seed(seed)
+
+    # create temporary time and timestamp columns
+    # Convert the '30min' column to a timedelta representing the minutes
+    df['time'] = pd.to_timedelta(df['30min'] * 30, unit='m')
+
+    # Create the datetime column by combining 'year', 'month', 'day' and 'time'
+    df['timestamp'] = pd.to_datetime(df[['year', 'month', 'day']]) + df['time']
+    def generate_artificial_gaps(df):
+        df["artificial_gap"] = 0 # 0 for no gap, 1 for short gap, 2 for long gap, 3 for very long gap
+        total_half_hours = len(df)
+        num_short_gaps = int(np.floor(short_gap_ratio * total_gap_ratio * total_half_hours / short_gap_length))
+        num_long_gaps = int(np.floor(long_gap_ratio * total_gap_ratio * total_half_hours / long_gap_length))
+        num_very_long_gaps = int(np.floor(very_long_gap_ratio * total_gap_ratio * total_half_hours / very_long_gap_length))
+
+        applied_gaps = []
+        # Function to apply gaps
+        def apply_gaps(num_gaps, gap_length, gap_description, applied_gaps, max_iter=100):
+            n_gaps_created = 0
+            for _ in range(num_gaps):
+                i = 0
+                while True and i < max_iter:
+                    i = i + 1
+                    start_index = np.random.choice(df.index[:-gap_length])
+                    end_index = start_index + gap_length - 1
+                    if end_index > df.index[-1]:
+                        continue
+                    gap_range = pd.date_range(start=df.loc[start_index, 'timestamp'], 
+                                            end=df.loc[end_index, 'timestamp'], 
+                                            freq='30min')
+                    gap_indices = df[df['timestamp'].isin(gap_range)].index
+                    # make sure that at most 50 percent of the values are actual gaps
+                    # for very large gaps, also define lower limit such that we don't waste too many values
+                    if all(idx not in applied_gaps for idx in gap_indices) and \
+                    (df.loc[gap_indices, ['H_orig', 'LE_orig']].isna().all(axis=1).sum() / gap_length) < 0.5:
+                        df.loc[gap_indices, "artificial_gap"] = gap_description
+                        applied_gaps.extend(gap_indices)
+                        n_gaps_created += 1
+                        break
+            return applied_gaps, n_gaps_created
+        
+        # start with large gaps since they are harder to create
+        # Apply very long gaps (30 days)
+        applied_very_long_gaps, n_applied_very_long_gaps = apply_gaps(num_very_long_gaps, very_long_gap_length, 3, applied_gaps)
+        applied_gaps = applied_gaps + applied_very_long_gaps     
+        # Apply long gaps (7 days)
+        applied_long_gaps, n_applied_long_gaps = apply_gaps(num_long_gaps, long_gap_length, 2, applied_gaps)
+        applied_gaps = applied_gaps + applied_long_gaps
+        # Apply short gaps (24h)
+        applied_short_gaps, n_applied_short_gaps = apply_gaps(num_short_gaps, short_gap_length, 1, applied_gaps)
+        applied_gaps = applied_gaps + applied_short_gaps
+
+
+        if verbose:
+            print(f"Created {n_applied_very_long_gaps} / {num_very_long_gaps} gaps of size {very_long_gap_length}")
+            print(f"Created {n_applied_long_gaps} / {num_long_gaps} gaps of size {long_gap_length}")
+            print(f"Created {n_applied_short_gaps} / {num_short_gaps} gaps of size {short_gap_length} \n")
+        return df
+    
+
+    # Apply the artificial gaps
+    if verbose:
+        print("Starting artificial gap creation for BG")
+    df_bg_with_gaps = generate_artificial_gaps(df[df["location"] == 0].copy().reset_index(drop=True))
+    if verbose:
+        print("Starting artificial gap creation for GW")
+    df_gw_with_gaps = generate_artificial_gaps(df[df["location"] == 1].copy().reset_index(drop=True))
+
+    df_final = pd.concat([df_bg_with_gaps, df_gw_with_gaps]).reset_index(drop=True)
+    # drop time and timestamp columns
+    df_final = df_final.drop(['time', 'timestamp'], axis=1)
+
+    if verbose:
+        df_filtered = df_final.loc[df_final[["H_orig", "LE_orig"]].notna().all(axis=1)]
+        artificial_gap_ratio = df_filtered[df_filtered["artificial_gap"] != 0].shape[0] / df_filtered.shape[0]
+        print(f"A fraction of {artificial_gap_ratio} from the total non-NA values were flagged as artificial gaps. Make sure that this is not much larger than 0.2")
+
+        
+    return df_final

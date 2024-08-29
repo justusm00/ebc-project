@@ -13,7 +13,7 @@ import fastprogress
 from sklearn.metrics import mean_squared_error
 
 
-from modules.dataset_util import grab_data
+from modules.dataset_util import grab_data, get_train_test_indices
 from modules.paths import PATH_MODEL_TRAINING, PATH_PREPROCESSED
 
 
@@ -401,7 +401,7 @@ def run_training(model, optimizer, num_epochs, train_dataloader, val_dataloader,
 
 
 
-def compute_test_loss_mlp(model, model_hash, cols_features, cols_labels, normalization, minmax_scaling,
+def compute_test_loss_mlp(model, model_hash, cols_features, cols_labels, normalization, minmax_scaling, fill_artificial_gaps,
                            num_cpus=1, device='cpu'):
     """Compute loss of model on test set
 
@@ -411,17 +411,17 @@ def compute_test_loss_mlp(model, model_hash, cols_features, cols_labels, normali
         cols_features: features used for training
         normalization: was training data normalized?
         minmax_scaling: was minmax scaling applied to training data?
+        fill_artificial_gaps (bool): if true, testset is comprised of the artificial gaps (model must not be trained on these!)
         num_cpus (int, optional): _description_. Defaults to 1.
         device (str, optional): _description_. Defaults to 'cpu'.
 
     Raises:
         ValueError: _description_
     """
-     # compute test loss
 
-    _, testset = grab_data(path_data=PATH_PREPROCESSED+'data_merged_with_nans.csv',
-                                path_indices=PATH_MODEL_TRAINING + 'indices_' + model_hash + '.pkl',
+    _ , testset = grab_data(model_hash=model_hash,
                                 num_cpus=num_cpus,
+                                fill_artificial_gaps=fill_artificial_gaps,
                                 cols_features=cols_features,
                                 cols_labels=cols_labels,
                                 normalization=normalization,
@@ -438,7 +438,7 @@ def compute_test_loss_mlp(model, model_hash, cols_features, cols_labels, normali
 
 
 
-def compute_test_loss_rf(model, cols_features, cols_labels, model_hash):
+def compute_test_loss_rf(model, cols_features, cols_labels, model_hash, fill_artificial_gaps):
     """Compute loss of random forest on test set
 
     Args:
@@ -446,12 +446,16 @@ def compute_test_loss_rf(model, cols_features, cols_labels, model_hash):
         cols_features (_type_): _description_
         cols_labels (_type_): _description_
         model_hash (str): needed to load test data
+        fill_artificial_gaps (bool): if true, testset is comprised of the artificial gaps (model must not be trained on these!)
 
     Raises:
         ValueError: _description_
     """
+    path_data = PATH_PREPROCESSED + 'data_merged_with_nans.csv'
+    _, test_indices = get_train_test_indices(fill_artificial_gaps, model_hash)
+    data = pd.read_csv(path_data)
+    data = data.loc[test_indices]
 
-    data = pd.read_csv(PATH_MODEL_TRAINING + 'test_data_' + model_hash + '.csv')
     X = data[cols_features]
     y = data[cols_labels]
     y_pred = model.predict(X)

@@ -2,6 +2,8 @@
 # virtual environment
 ebc-project/ 
 more_data/
+plots/analysis/
+
 
 results__timeseries.txt
 

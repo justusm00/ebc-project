@@ -128,7 +128,7 @@ def compute_soil_heatflux(df):
     measure_indices = [1, 2, 3]
     # compute gradient at every measurement site
     for measure_idx in measure_indices:
-        df[f"dTdz_5cm_15cm_{measure_idx}"] = (df[f"soilTemperature_{measure_idx}_5cm"] - df[f"soilTemperature_{measure_idx}_15cm"]) / 0.1
+        df[f"dTdz_5cm_15cm_{measure_idx}"] = (df[f"soilTemperature_{measure_idx}_15cm"] - df[f"soilTemperature_{measure_idx}_5cm"]) / 0.1
 
     # compute mean thermal conductivity at 5cm
     df["thermalConductivity_5cm_mean"] = df[["thermalConductivity_1_5cm",

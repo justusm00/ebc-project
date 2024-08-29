@@ -1,34 +1,21 @@
 library(REddyProc)
 library(base)
+# Load necessary libraries
+library(dplyr)
+library(tidyr)
+library(lubridate)
 
 
-# load data
-EddyData <- read.csv("data/preprocessed/data_merged_with_nans.csv")
+#### this script is used to compute the MSE for the predictions of the MDS algorithm on the artificial gap data
+#### this must be done site-wise for BG and GW
 
 
-# filter for bg
-EddyData <- subset(EddyData, location == 0)
-# filter for 2024
-EddyData <- subset(EddyData, year > 2023)
+######### auxiliary functions
 
-
-
-
-
-old_names <- c("year", "day_of_year", "X30min",
-               "NEE_orig", "LE_orig", "H_orig", "incomingShortwaveRadiation",
-               "airTemperature", "soilTemperature", "relativeHumidity", "waterPressureDeficit", "Ustar")
-
-
-
-EddyData <- EddyData[, old_names]
-new_names <- c("Year", "DoY", "Hour", "NEE", "LE", "H", "Rg", "Tair", "Tsoil", "rH", "VPD", "Ustar")
-EddyData$X30min <- EddyData$X30min * 0.5 + 0.5
-names(EddyData) <- new_names
-
-#+++ If not provided, calculate VPD from Tair and rH
-EddyData$VPD <- fCalcVPDfromRHandTair(EddyData$rH, EddyData$Tair)
-
+# Function to create a complete sequence of dates and times
+create_complete_sequence <- function(start_date, end_date) {
+  seq(from = start_date, to = end_date, by = "30 min")
+}
 
 
 processEddyData <- function(df, column_name) {
@@ -55,36 +42,104 @@ processEddyData <- function(df, column_name) {
 }
 
 
-compute_mse <- function(EddyData) {
-  df <- EddyData
-  df_copy <- df
-  # Get indices of a random 20% of rows where H and LE are not NA ( this is the testset, everything else is the trainset)
-  valid_indices <- which(!is.na(EddyData$H) &!is.na(EddyData$LE))
-  sample_size <- ceiling(0.2 * length(valid_indices))
-  sampled_indices <- sample(valid_indices, sample_size)
+gap_filling_mds <- function(df, loc){
+  # filter for location
+  df <- subset(df, location == loc)
+  # Find the range of dates in your dataframe
+  start_date <- ymd_hms(paste(df$year[1], df$month[1], df$day[1], floor(df$hour[1]), (df$hour[1] - floor(df$hour[1])) * 60, "00", sep = "-"))
+  end_date <- ymd_hms(paste(tail(df$year, 1), tail(df$month, 1), tail(df$day, 1), floor(tail(df$hour, 1)), (tail(df$hour, 1) - floor(tail(df$hour, 1))) * 60, "00", sep = "-"))
   
-  # artificially set test values to NA
-  df$H[sampled_indices] <- NA
-  df$LE[sampled_indices] <- NA
-  # fill gaps
-  df_copy$H_f <- processEddyData(df, "H")
-  df_copy$LE_f <- processEddyData(df, "LE")
-  mse_h <- mean((df_copy[sampled_indices, ]$H - df_copy[sampled_indices, ]$H_f)**2)
-  mse_le <- mean((df_copy[sampled_indices, ]$LE - df_copy[sampled_indices, ]$LE_f)**2)
-  mse_total = mse_h + mse_le
-  return(mse_total)
+  
+  # Generate the complete sequence of date-times
+  complete_sequence <- create_complete_sequence(start_date, end_date)
+  
+  
+  # Create a dataframe from the complete sequence
+  complete_df <- data.frame(datetime = complete_sequence)
+  complete_df <- complete_df %>%
+    mutate(
+      year = year(datetime),
+      month = month(datetime),
+      day_of_year = yday(datetime),
+      hour = hour(datetime) + minute(datetime) / 60
+    ) %>%
+    select(-datetime)
+  
+  complete_df
+  
+  # Merge with the original dataframe
+  merged_df <- complete_df %>%
+    left_join(df, by = c("year", "month", "day_of_year", "hour"))
+  
+  
+  
+  old_names <- c("year", "day_of_year", "hour",
+                 "NEE_orig", "LE_orig", "H_orig", "incomingShortwaveRadiation",
+                 "airTemperature", "soilTemperature", "relativeHumidity", "waterPressureDeficit", "Ustar", "artificial_gap")
+  
+  
+  
+  df <- merged_df[, old_names]
+  new_names <- c("Year", "DoY", "Hour", "NEE", "LE", "H", "Rg", "Tair", "Tsoil", "rH", "VPD", "Ustar", "artificial_gap")
+  names(df) <- new_names
+  df_orig <- df
+  
+  
+  # set original values to na for artificial gaps
+  df$H[df$artificial_gap != 0] <- NA
+  df$LE[df$artificial_gap != 0] <- NA
+  
+  
+  
+  #+++ If not provided, calculate VPD from Tair and rH
+  df$VPD <- fCalcVPDfromRHandTair(df$rH, df$Tair)
+  
+  
+  
+  df_orig$H_f <- processEddyData(df, "H")
+  df_orig$LE_f <- processEddyData(df, "LE")
+  
+  
+  
+
+  df_comp <- df_orig[complete.cases(df_orig[, c("H", "LE")]), ]
+  
+  return(df_comp)
 }
 
 
 
-mses <- c()
-for (i in 1:1000) {
-  mses <- c(mses, compute_mse(EddyData))
-}
-
-mses
-mean(mses)
 
 
+########## gap filling
 
+# load data
+data <- read.csv("data/preprocessed/data_merged_with_nans.csv")
+
+# create hour column
+data$hour <- data$X30min * 0.5 
+data <- subset(data, select = -X30min)
+
+
+df_comp_bg <- gap_filling_mds(data, 0)
+df_comp_bg$location <- 0
+
+df_comp_gw <- gap_filling_mds(data, 1)
+df_comp_gw$location <- 1
+
+
+df_combined <- rbind(df_comp_bg, df_comp_gw)
+
+# select only subset
+
+
+df_combined$X30min <- as.numeric(df_combined$Hour * 2)
+df_combined <- df_combined[, c("Year", "DoY", "location", "X30min", "H_f", "LE_f")]
+
+
+names(df_combined) <- c("year", "day_of_year", "location", "X30min", "H_f", "LE_f")
+
+
+
+write.csv(df_combined, file = "data/gapfilled/combined_gapfilled_mds.csv", row.names = FALSE)
 
