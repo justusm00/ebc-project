@@ -20,20 +20,6 @@ def plot_ebc(path_gapfilled, path_plots):
     df_gw = pd.read_csv(PATH_GAPFILLED + 'GW_gapfilled.csv')
     df_bg = pd.read_csv(PATH_GAPFILLED + 'BG_gapfilled.csv')
 
-    # merge mds data
-    df_mds = pd.read_csv(PATH_GAPFILLED + 'combined_gapfilled_mds.csv')
-    df_mds["30min"] = df_mds["X30min"]
-    df_mds["H_f_mds"] = df_mds["H_f"]
-    df_mds["LE_f_mds"] = df_mds["LE_f"]
-    df_mds.drop(["X30min", "H_f", "LE_f"], axis=1, inplace=True)
-    df_bg_mds = df_mds[df_mds["location"] == 0]
-    df_gw_mds = df_mds[df_mds["location"] == 1]
-    df_bg_mds.drop("location", axis=1, inplace=True)
-    df_gw_mds.drop("location", axis=1, inplace=True)
-
-    df_bg = df_bg.merge(df_bg_mds, on=["30min", "year", "day_of_year"], how="outer")
-    df_gw = df_gw.merge(df_gw_mds, on=["30min", "year", "day_of_year"], how="outer")
-
 
     # filter for 2024
     df_gw = df_gw[df_gw["year"] == 2024]
@@ -44,10 +30,12 @@ def plot_ebc(path_gapfilled, path_plots):
     df_bg['time'] = df_bg['30min'].apply(lambda x: pd.Timedelta(minutes=30 * x))
     df_bg['time'] = df_bg['time'].apply(lambda x: f"{x.components.hours:02}:{x.components.minutes:02}")
     df_gw['time'] = df_gw['time'].apply(lambda x: f"{x.components.hours:02}:{x.components.minutes:02}")
+    df_bg['date'] = pd.to_datetime(df_bg[['year', 'month', 'day']]) 
+    df_gw['date'] = pd.to_datetime(df_gw[['year', 'month', 'day']]) 
 
     # filter for day time
-    df_bg = df_bg[(df_bg['time'] >= '10:00') &  (df_bg['time'] <= '17:00') ]
-    df_gw = df_gw[(df_gw['time'] >= '10:00') &  (df_gw['time'] <= '17:00') ]
+    df_bg = df_bg[(df_bg['time'] >= '08:00') &  (df_bg['time'] <= '17:00') ]
+    df_gw = df_gw[(df_gw['time'] >= '08:00') &  (df_gw['time'] <= '17:00') ]
 
 
 
@@ -56,34 +44,39 @@ def plot_ebc(path_gapfilled, path_plots):
     df_bg["Q"] = df_bg["netRadiation"]
 
 
-    def aggregate_data(df):
-        df_agg = df.groupby("time").agg(G=("soilHeatflux", "mean"), H_orig = ("H_orig", "mean"), H_f_mds=("H_f_mds", "mean"),
-                                        H_f_mlp=("H_f_mlp", "mean"), H_f_rf=("H_f_rf", "mean"),  LE_orig=("LE_orig", "mean"), LE_f_mds=("LE_f_mds", "mean"),
-                                        LE_f_mlp=("LE_f_mlp", "mean"), LE_f_rf=("LE_f_rf", "mean"), Q=("Q", "mean")).reset_index()
-        return df_agg
+    def plot_aggregated(col_agg, df_bg, df_gw):
+        def aggregate_data(df):
+            df_agg = df.groupby(col_agg).agg(G=("soilHeatflux", "mean"), H_orig = ("H_orig", "mean"), H_f_rf=("H_f_rf", "mean"),  LE_orig=("LE_orig", "mean"), LE_f_rf=("LE_f_rf", "mean"), Q=("Q", "mean")).reset_index()
+            return df_agg
 
 
-    df_gw = aggregate_data(df_gw)
-    df_bg = aggregate_data(df_bg)
-    df_gw["Res"] = df_gw["Q"] - df_gw["H_f_rf"] - df_gw["LE_f_rf"]
-    df_bg["Res"] = df_bg["Q"] - df_bg["G"] - df_bg["H_f_rf"] - df_bg["LE_f_rf"]
+        df_gw = aggregate_data(df_gw)
+        df_bg = aggregate_data(df_bg)
+        df_gw["Res"] = df_gw["Q"] - df_gw["H_f_rf"] - df_gw["LE_f_rf"]
+        df_bg["Res"] = df_bg["Q"] - df_bg["G"] - df_bg["H_f_rf"] - df_bg["LE_f_rf"]
 
-    plt.figure()
+        plt.figure()
 
-    plt.plot(df_bg["time"], 100 * df_bg["Res"] / df_bg["Q"], label="BG")
-    plt.plot(df_gw["time"], 100 * df_gw["Res"] / df_gw["Q"], label="GW")
-    plt.xticks(df_bg["time"][::4], rotation=45)
-    plt.xlabel("Time")
-    plt.ylabel("EBC gap in percent")
-    plt.tight_layout()
-    plt.legend()
+        plt.plot(df_bg[col_agg], df_bg["Res"] / df_bg["Q"], label="BG")
+        plt.plot(df_gw[col_agg], df_gw["Res"] / df_gw["Q"], label="GW")
+        if col_agg == 'time':
+            step_size = 4
+        else:
+            step_size = 8
+            plt.ylim(-0.4, 0.6)
+        plt.xticks(df_bg[col_agg][::step_size], rotation=45)
+        plt.xlabel(col_agg)
+        plt.ylabel("$Res/Q_n$")
+        plt.tight_layout()
+        plt.legend()
+        plt.grid()
+        plt.savefig(PATH_PLOTS + f'diurnal_cycles/ebc_{col_agg}.pdf', dpi=150)
 
-    plt.savefig(PATH_PLOTS + 'diurnal_cycles/ebc.pdf', dpi=150)
 
 
 
-
-  
+    for col_agg in ["time", "date"]:
+        plot_aggregated(col_agg, df_bg, df_gw)
     print(f"Saved figures to {PATH_PLOTS + 'diurnal_cycles/'}")
 
             
