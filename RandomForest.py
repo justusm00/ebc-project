@@ -21,10 +21,10 @@ from modules.dataset_util import train_test_splitter
 
 
 # ALWAYS SPECIFY THESE
-# cols_features = COLS_IMPORTANT_FEATURES
-cols_features = ["incomingShortwaveRadiation", "location", "day_of_year", "30min"]
+cols_features = COLS_IMPORTANT_FEATURES
+# cols_features = ["incomingShortwaveRadiation", "location", "day_of_year", "30min"]
 cols_labels = COLS_LABELS_ALL
-fill_artificial_gaps = True
+fill_artificial_gaps = False
 
 
 def fit_rf(cols_features, cols_labels, fill_artificial_gaps=False, save_results=True, verbose=True):
