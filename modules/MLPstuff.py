@@ -42,6 +42,7 @@ class MLP(nn.Module):
         for _ in range(num_hidden_layers):
             layers.append(nn.Linear(num_hidden_units, num_hidden_units))
             layers.append(act_fn)
+            #layers.append(nn.Dropout(0.3))
     
         layers.append(nn.Linear(num_hidden_units, num_predictors))
         

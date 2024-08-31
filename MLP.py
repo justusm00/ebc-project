@@ -24,24 +24,24 @@ import torch.optim as optim
 from modules.util import get_hash_from_features_and_labels
 from modules.dataset_util import grab_data, train_val_splitter, data_loaders,train_test_splitter, SingleBatchDataLoader
 from modules.MLPstuff import run_training, MLP, test, MyReduceLROnPlateau
-from modules.columns import COLS_FEATURES_ALL, COLS_LABELS_ALL, COLS_KEY, COLS_KEY_ALT, COLS_IMPORTANT_FEATURES
+from modules.columns import COLS_FEATURES_ALL, COLS_LABELS_ALL, COLS_KEY, COLS_KEY_ALT, COLS_IMPORTANT_FEATURES, COLS_SHORTWAVE
 from modules.paths import PATH_MODEL_TRAINING, PATH_MODEL_SAVES_MLP, PATH_PLOTS, PATH_PREPROCESSED,\
     PATH_MODEL_SAVES_FEATURES, PATH_MODEL_SAVES_LABELS, PATH_MODEL_SAVES_STATISTICS
 
 
 
 # SPECIFY THESE
-cols_features = COLS_IMPORTANT_FEATURES
-# cols_features = ["incomingShortwaveRadiation", "location", "day_of_year", "30min"]
+# cols_features = COLS_IMPORTANT_FEATURES
+cols_features = COLS_SHORTWAVE
 cols_labels = COLS_LABELS_ALL
 fill_artificial_gaps = False # if True, use artifical gaps as testset
 normalization = False
 minmax_scaling = True
 who_trained = 'JM' # author
-GPU = False
-num_epochs = 150
+GPU = True
+num_epochs = 500
 lr = 10**(-3)
-patience_early_stopper = 50
+patience_early_stopper = 30
 patience_scheduler = 10
 num_hidden_units = 60
 num_hidden_layers = 4
@@ -167,7 +167,7 @@ def train_mlp(GPU, num_epochs, lr, batch_size, cols_features=COLS_FEATURES_ALL,
     trainset, valset = train_val_splitter(trainset, val_frac=0.2)
 
     trainloader, valloader, testloader = data_loaders(trainset, valset, testset,
-                                                      num_cpus=num_cpus, batch_size=batch_size)
+                                                      num_cpus=0, batch_size=batch_size)
     
 
     # create single batch dataloaders for intentional overfitting
@@ -187,7 +187,7 @@ def train_mlp(GPU, num_epochs, lr, batch_size, cols_features=COLS_FEATURES_ALL,
 
     train_losses, val_losses = run_training(model=model, optimizer=optimizer, num_epochs=1000,
                                              train_dataloader=trainloader_of, val_dataloader=valloader_of,
-                                             device=device, loss_fn=criterion, patience=5, early_stopper=False, verbose=False, plot_results=True)
+                                             device=device, loss_fn=criterion, patience=40, early_stopper=False, verbose=False, plot_results=True)
 
 
 

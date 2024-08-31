@@ -297,7 +297,7 @@ def train_val_splitter(dataset, split_seed=42, val_frac = 0.2):
 
 
 # Dataloaders
-def data_loaders(trainset, valset, testset, batch_size=64, num_cpus=1):
+def data_loaders(trainset, valset, testset, batch_size=64, num_cpus=0):
     """Initialize train, validation and test data loader.
 
     Args:

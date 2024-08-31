@@ -32,6 +32,7 @@ COLS_FEATURES_ALL = COLS_KEY+ ["day_of_year",
 # only important features
 # COLS_IMPORTANT_FEATURES = COLS_KEY + ["incomingShortwaveRadiation", "soilHeatflux", "waterPressureDeficit"]
 COLS_IMPORTANT_FEATURES = ["incomingShortwaveRadiation", "location", "soilTemperature", "airTemperature", "day_of_year", "windSpeed", "30min"]
+COLS_SHORTWAVE = ["incomingShortwaveRadiation", "location", "day_of_year", "30min"]
 
 
 # columns to keep from flux data

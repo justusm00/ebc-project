@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 import pickle
 import json
-from modules.columns import COLS_FEATURES_ALL, COLS_LABELS_ALL, COLS_IMPORTANT_FEATURES
+from modules.columns import COLS_FEATURES_ALL, COLS_LABELS_ALL, COLS_IMPORTANT_FEATURES, COLS_SHORTWAVE
 from modules.paths import PATH_MODEL_TRAINING, PATH_MODEL_SAVES_RF, PATH_PREPROCESSED
 from modules.util import get_hash_from_features_and_labels
 from modules.dataset_util import train_test_splitter
@@ -21,8 +21,8 @@ from modules.dataset_util import train_test_splitter
 
 
 # ALWAYS SPECIFY THESE
-cols_features = COLS_IMPORTANT_FEATURES
-# cols_features = ["incomingShortwaveRadiation", "location", "day_of_year", "30min"]
+# cols_features = COLS_IMPORTANT_FEATURES
+cols_features = COLS_SHORTWAVE
 cols_labels = COLS_LABELS_ALL
 fill_artificial_gaps = False
 
@@ -261,5 +261,5 @@ def stepwise_forward_selection_rf(max_features=None, tol=0.01):
 
 
 if __name__ == '__main__':
-    fit_rf(cols_features=cols_features, cols_labels=cols_labels, fill_artificial_gaps=fill_artificial_gaps, save_results=True, verbose=True)
+    fit_rf(cols_features=cols_features, cols_labels=cols_labels, fill_artificial_gaps=fill_artificial_gaps, save_results=False, verbose=True)
     # stepwise_forward_selection_rf()
