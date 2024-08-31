@@ -17,12 +17,12 @@ from modules.paths import PATH_PREPROCESSED, PATH_GAPFILLED
 
 
 # SPECIFY THESE
-filename_mlp = 'mlp_60_4_JM_minmax_AGF_5286a2e3c84ebdb055490bea6c9dc91c.pth' # mlp trained on important features
-filename_mlpsw = 'mlp_60_4_JM_minmax_AGF_6ee83c392c0d7208dd385e8558700ff9.pth' # mlp trained on keys + incoming shortwave radiation
-# filename_mlpsw = None
-filename_rf = 'RF_AGF_5286a2e3c84ebdb055490bea6c9dc91c.pkl' # rf trained on important features
-filename_rfsw = 'RF_AGF_6ee83c392c0d7208dd385e8558700ff9.pkl' # rf trained on keys + incoming shortwave radiation
-# filename_rfsw = None
+filename_mlp = 'mlp_60_4_JM_minmax_5286a2e3c84ebdb055490bea6c9dc91c.pth' # mlp trained on important features
+#filename_mlpsw = 'mlp_60_4_JM_minmax_AGF_6ee83c392c0d7208dd385e8558700ff9.pth' # mlp trained on keys + incoming shortwave radiation
+filename_mlpsw = None
+filename_rf = 'RF_5286a2e3c84ebdb055490bea6c9dc91c.pkl' # rf trained on important features
+#filename_rfsw = 'RF_AGF_6ee83c392c0d7208dd385e8558700ff9.pkl' # rf trained on keys + incoming shortwave radiation
+filename_rfsw = None
 
 
 path_data = PATH_PREPROCESSED + 'data_merged_with_nans.csv'

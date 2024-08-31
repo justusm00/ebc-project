@@ -34,9 +34,9 @@ from modules.paths import PATH_MODEL_TRAINING, PATH_MODEL_SAVES_MLP, PATH_PLOTS,
 cols_features = COLS_IMPORTANT_FEATURES
 # cols_features = ["incomingShortwaveRadiation", "location", "day_of_year", "30min"]
 cols_labels = COLS_LABELS_ALL
-fill_artificial_gaps = True # if True, use artifical gaps as testset
+fill_artificial_gaps = False # if True, use artifical gaps as testset
 normalization = False
-minmax_scaling = False
+minmax_scaling = True
 who_trained = 'JM' # author
 GPU = False
 num_epochs = 150
