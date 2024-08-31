@@ -1,15 +1,29 @@
+# Imports and important defines
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import Dataset, DataLoader
-from torch.optim.lr_scheduler import ReduceLROnPlateau
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
 import os
 
-from modules.MLPstuff import run_training
-from modules.columns import COLS_IMPORTANT_FEATURES, COLS_LABELS_ALL
+from modules.MLPstuff import MyReduceLROnPlateau
+from modules.columns import COLS_LABELS_ALL, COLS_LSTM
+from modules.dataset_util import SingleBatchDataLoader
+from modules.paths import PATH_MODEL_SAVES_CONV
+from modules.LSTMStuff import ConvNet, run_training, grab_series_data, Splitted_SplitLoader
+
+FEATURES = COLS_LSTM
+LABELS = COLS_LABELS_ALL
+
+hidden_size=80
+num_layers=2
+window_size=6
+wd = 1e-5
+bd = False
+ks = 6
+oc = 64
+dropout=0.3
+lr = 5e-4
+num_epochs = 500
+
 
 # Get number of cpus to use for faster parallelized data loading
 avb_cpus = os.cpu_count()
@@ -40,134 +54,49 @@ def get_device(cuda_preference=True):
 
 device = get_device()
 
-# Load the data
-series = pd.read_csv('data/preprocessed/data_merged_with_nans.csv').dropna(subset=["incomingShortwaveRadiation", "soilHeatflux", "waterPressureDeficit", "H_f", "LE_f"])
-series = series[COLS_IMPORTANT_FEATURES + ["H_f", "LE_f"]] #series[ COLS_IMPORTANT_FEATURES + COLS_LABELS_ALL ]
-# Check for no NaNs in the used columns
-print("NaNs in columns:")
-print(series.isna().sum())
-# Split into targets and features
-series_data = series[COLS_IMPORTANT_FEATURES]
-series_targets = series[["H_f", "LE_f"]]
+subseries = grab_series_data(window_size=window_size, features=FEATURES, labels=['H_orig', 'LE_orig'], n_aug=0, gapfilled=False, normalize=False)
 
-# Define a dataset of windows
-class SplitTimeSeries(Dataset):
-    def __init__(self, series_data, series_targets, window_size=48):
-        self.series_data = series_data.to_numpy()
-        self.series_targets = series_targets.to_numpy()
-        self.window_size = window_size
-        self.splits, self.targets = self.split_series()
+trainloader, valloader, testloader = Splitted_SplitLoader( subseries[FEATURES+['series_id']], subseries[LABELS], 32, features=FEATURES, normalize=True )
 
-    def split_series(self):
-        splits = []
-        targets = []
+# Try to overfit first
+hidden_size=300
+num_layers=2
 
-        # Splits of size windows_size result in a loss of windows_size data points
-        for i in range(len(self.series_data) - self.window_size): 
-            # Create split
-            split = self.series_data[i:i+self.window_size, :] # Slice through series
-            # Target are the target values at the end of the snippet
-            target = self.series_targets[ i+self.window_size ]
+trainloader_of = SingleBatchDataLoader(trainloader)
+valloader_of = SingleBatchDataLoader(valloader)
 
-            splits.append(split)
-            targets.append(target)
+model = ConvNet(num_features=len(FEATURES), window_size=window_size, kernel_size=ks, out_channels=oc).to(device)
+# model = LSTMModel(input_size=len(FEATURES), hidden_size=hidden_size, num_layers=num_layers, output_size=2).to(device)
+# model = LSTMCNN(input_size=len(FEATURES), hidden_size=hidden_size, num_layers=num_layers, output_size=2, dropout=dropout, bidirectional=bd, kernel_size=ks).to(device)
+# Set loss function and optimizer
+criterion = nn.MSELoss()
+optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=wd)
 
-        return np.array(splits), np.array(targets) # Convert to numpy for faster processing
-    
-    def __len__(self):
-        return len(self.splits)
-    
-    def __getitem__(self, idx):
-        # Return torch tensors of the splits
-        tens_dat = torch.tensor( self.splits[idx], dtype=torch.float32 )
-        tens_tar = torch.tensor( self.targets[idx], dtype=torch.float32 )
-        return torch.transpose(tens_dat, 0, 1), tens_tar
-    
-# Create the dataset and do the train test val split
-test_split_size = 0.9
-val_split_size = 0.8
 
-# Start wiht train test split
-idxs = list( range( len(series_data) ) )
-splt = int( test_split_size * len(series_data) )
-np.random.shuffle( idxs ) # Shuffle the indexes randomly
-train_idxs = idxs[:splt]
-test_idxs = idxs[splt:]
+train_losses, val_losses = run_training(model=model, optimizer=optimizer, num_epochs=3000,
+                                            train_dataloader=trainloader_of, val_dataloader=valloader_of,
+                                            device=device, loss_fn=criterion, patience=5, early_stopper=False, verbose=False, plot_results=True)
 
-# Now train val split
-splt = int( val_split_size * len(train_idxs) )
-val_idxs = train_idxs[splt:]
-train_idxs = train_idxs[:splt]
+print(f"Overfitting: train loss: {train_losses[-1]}, val loss: {val_losses[-1]}")
 
-# Now perform the split
-data_train = series_data.iloc[train_idxs]
-data_val = series_data.iloc[val_idxs]
-data_test = series_data.iloc[test_idxs]
 
-targets_train = series_targets.iloc[train_idxs]
-targets_val = series_targets.iloc[val_idxs]
-targets_test = series_targets.iloc[test_idxs]
-
-# Normalize the data using the statistics of the training set (avoid spilling)
-data_mean = data_train.mean()
-data_std = data_train.std()
-
-data_train = (data_train - data_mean) / data_std
-data_test = (data_test - data_mean) / data_std
-data_val = (data_val - data_mean) / data_std
-
-print(f"The data has {len(series_data)} entries.\nThe trainset has {len(data_train)}, the valset {len(data_val)} and the testset {len(data_test)} entries.")
-
-# Create the datasets and dataloaders
-window_size = 48 # Use one day
-batch_size = 64
-
-trainset = SplitTimeSeries(data_train, targets_train, window_size=window_size)
-testset = SplitTimeSeries(data_test, targets_test, window_size=window_size)
-valset = SplitTimeSeries(data_val, targets_val, window_size=window_size)
-
-# num_workers=0 because it strangely doesn't work otherwise
-trainloader = DataLoader(trainset, batch_size=batch_size, num_workers=0)
-valloader = DataLoader(valset, batch_size=batch_size, num_workers=0)
-testloader = DataLoader(testset, batch_size=batch_size, num_workers=0)
-
-iterator = iter(trainloader)
-dat, tar = next(iterator)
-print(dat.size())
-print(tar.size())
-
-# Define the model.
-# The idea is to have 1d convolutions for simple time series analyses and 2d convolutions downstream to capture feature interactions
-class ConvNet(nn.Module):
-    def __init__(self, num_features, window_size, act_fn=nn.ReLU()):
-        super().__init__()
-
-        self.conv1 = nn.Conv1d( in_channels=num_features, out_channels=16, kernel_size = 12 ) # Output is 16*37
-        self.conv2 = nn.Conv1d( in_channels=16, out_channels=32, kernel_size=6 ) # Output size 32*32 (32 series length)
-        self.conv3 = nn.Conv2d( in_channels=1, out_channels=64, kernel_size=(3,32) ) # Convolve over all features # Ouput size is 64*1*30
-
-        self.fc1 = nn.Linear( 64 * (window_size-18) * 1, 2) # 64 Output channels with a size of (ws-12-6-2)
-
-        self.act_fn = act_fn
-
-    def forward(self, x):
-        x = self.act_fn( self.conv1(x) ) 
-        x = self.act_fn( self.conv2(x) )
-        x = x.unsqueeze(1) # Add dimension above for 2DConv
-        x = self.act_fn( self.conv3(x) )
-        x = torch.flatten(x, 1) # Flatten for FC
-        x = self.fc1(x)
-        return x
-    
-model = ConvNet(num_features=len(COLS_IMPORTANT_FEATURES), window_size=window_size).to(device)
+# model = LSTMModel(input_size=len(FEATURES), hidden_size=hidden_size, num_layers=num_layers, output_size=2).to(device)
+model = model = ConvNet(num_features=len(FEATURES), window_size=window_size, kernel_size=ks, out_channels=oc).to(device)
 
 criterion = nn.MSELoss()
-lr = 10**(-2)
-optimizer = optim.Adam(model.parameters(), lr=lr)
-scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=8,
-                              threshold=0.0001, threshold_mode='rel', cooldown=0, min_lr=0)
+optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=wd)
 
-num_epochs = 50
+scheduler = MyReduceLROnPlateau(optimizer, mode='min', factor=0.8, patience=20,
+                                threshold=0.0001, threshold_mode='rel', cooldown=0, min_lr=1e-6)
+# scheduler = None
 
 train_losses, val_losses = run_training(model=model, optimizer=optimizer, num_epochs=num_epochs, train_dataloader=trainloader, val_dataloader=valloader, 
-                                                              device=device, loss_fn=criterion, patience=10, scheduler=scheduler, early_stopper=False, verbose=True)
+                                                            device=device, loss_fn=criterion, patience=40, scheduler=scheduler, early_stopper=True, verbose=True,
+                                                            save_plots_path=f'plots/LSTM/hiddensize{hidden_size}_layers{num_layers}_run{j}.png')
+
+print(f"Train loss: {train_losses[-1]}, Val Loss: {val_losses[-1]}")
+
+# Save model
+model_save_path = PATH_MODEL_SAVES_CONV + f"LSTM_{hidden_size}_{num_layers}_IF_WS{window_size}_raw" + '.pth'
+torch.save(model.state_dict(), model_save_path )
+print(f"Saved model to {model_save_path} \n")

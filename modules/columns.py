@@ -44,4 +44,5 @@ COLS_FLUXES = COLS_KEY + ["H_orig",
                           "Ustar",
                           "NEE_orig"]
 
+COLS_LSTM = ["soilHeatflux","incomingShortwaveRadiation", "airTemperature","waterVaporPressure","windSpeed"]
 

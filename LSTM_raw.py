@@ -1,27 +1,27 @@
-# Imports and important defines
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import Dataset, DataLoader
-from torch.optim.lr_scheduler import ReduceLROnPlateau
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
 import os
 
-from modules.util import transform_timestamp
 from modules.MLPstuff import MyReduceLROnPlateau
-from modules.columns import COLS_IMPORTANT_FEATURES, COLS_LABELS_ALL, COLS_KEY, COLS_KEY_ALT
-from modules.dataset_util import SingleBatchDataLoader, SplittedTimeSeries, TimeSeries_SplitLoader, grab_filled_data
-from modules.paths import PATH_MODEL_SAVES_CONV, PATH_MODEL_SAVES_LSTM
-from modules.LSTMStuff import LSTMModel, run_training, grab_series_data, Splitted_SplitLoader
+from modules.columns import COLS_LABELS_ALL, COLS_LSTM
+from modules.dataset_util import SingleBatchDataLoader
+from modules.paths import PATH_MODEL_SAVES_LSTM
+from modules.LSTMStuff import LSTMModel, LSTMCNN, run_training, grab_series_data, Splitted_SplitLoader
 
-FEATURES = COLS_IMPORTANT_FEATURES
+FEATURES = COLS_LSTM
 LABELS = COLS_LABELS_ALL
 
 hidden_size=80
 num_layers=2
 window_size=6
+wd = 1e-5
+bd = False
+ks = 6
+oc = 64
+dropout=0.3
+lr = 5e-4
+num_epochs = 500
 
 
 # Get number of cpus to use for faster parallelized data loading
@@ -53,22 +53,23 @@ def get_device(cuda_preference=True):
 
 device = get_device()
 
-subseries = grab_series_data(window_size=window_size, features=FEATURES, labels=['H_orig', 'LE_orig'], n_aug=1)
+subseries = grab_series_data(window_size=window_size, features=FEATURES, labels=['H_orig', 'LE_orig'], n_aug=0, gapfilled=False, normalize=False)
 
-trainloader, valloader, testloader = Splitted_SplitLoader( subseries[FEATURES+['series_id']], subseries[LABELS], 32 )
+trainloader, valloader, testloader = Splitted_SplitLoader( subseries[FEATURES+['series_id']], subseries[LABELS], 32, features=FEATURES, normalize=True )
 
 # Try to overfit first
-hidden_size=80
+hidden_size=300
 num_layers=2
 
 trainloader_of = SingleBatchDataLoader(trainloader)
 valloader_of = SingleBatchDataLoader(valloader)
 
 #model = ConvNet(num_features=len(FEATURES), window_size=window_size).to(device)
-model = LSTMModel(input_size=len(FEATURES), hidden_size=hidden_size, num_layers=num_layers, output_size=2).to(device)
+# model = LSTMModel(input_size=len(FEATURES), hidden_size=hidden_size, num_layers=num_layers, output_size=2).to(device)
+model = LSTMCNN(input_size=len(FEATURES), hidden_size=hidden_size, num_layers=num_layers, output_size=2, dropout=dropout, bidirectional=bd, kernel_size=ks).to(device)
 # Set loss function and optimizer
 criterion = nn.MSELoss()
-optimizer = optim.Adam(model.parameters(), lr=1e-3)
+optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=wd)
 
 
 train_losses, val_losses = run_training(model=model, optimizer=optimizer, num_epochs=3000,
@@ -78,21 +79,19 @@ train_losses, val_losses = run_training(model=model, optimizer=optimizer, num_ep
 print(f"Overfitting: train loss: {train_losses[-1]}, val loss: {val_losses[-1]}")
 
 
-model = LSTMModel(input_size=len(FEATURES), hidden_size=hidden_size, num_layers=num_layers, output_size=2).to(device)
+# model = LSTMModel(input_size=len(FEATURES), hidden_size=hidden_size, num_layers=num_layers, output_size=2).to(device)
+model = LSTMCNN(input_size=len(FEATURES), hidden_size=hidden_size, num_layers=num_layers, output_size=2, dropout=dropout, bidirectional=bd, kernel_size=ks).to(device)
 
 criterion = nn.MSELoss()
-lr = 10**(-3)
-optimizer = optim.Adam(model.parameters(), lr=lr)
+optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=wd)
 
-scheduler = MyReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=10,
-                                threshold=0.0001, threshold_mode='rel', cooldown=0, min_lr=1e-5)
+scheduler = MyReduceLROnPlateau(optimizer, mode='min', factor=0.8, patience=20,
+                                threshold=0.0001, threshold_mode='rel', cooldown=0, min_lr=1e-6)
 # scheduler = None
 
-num_epochs = 100
-
 train_losses, val_losses = run_training(model=model, optimizer=optimizer, num_epochs=num_epochs, train_dataloader=trainloader, val_dataloader=valloader, 
-                                                            device=device, loss_fn=criterion, patience=200, scheduler=scheduler, early_stopper=False, verbose=False,
-                                                            save_plots_path=f'plots/LSTM/hiddensize{hidden_size}_raw.png')
+                                                            device=device, loss_fn=criterion, patience=40, scheduler=scheduler, early_stopper=True, verbose=True,
+                                                            save_plots_path=f'plots/LSTM/hiddensize{hidden_size}_layers{num_layers}_run{j}.png')
 
 print(f"Train loss: {train_losses[-1]}, Val Loss: {val_losses[-1]}")
 

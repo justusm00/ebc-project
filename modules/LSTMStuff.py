@@ -18,6 +18,7 @@ from modules.dataset_util import SplittedTimeSeries
 from modules.paths import PATH_MODEL_TRAINING, PATH_PREPROCESSED
 from modules.MLPstuff import EarlyStopper
 from modules.util import transform_timestamp
+from sklearn.preprocessing import StandardScaler
 
 #### SEEDING ####
 SEED = 42
@@ -26,6 +27,34 @@ torch.manual_seed(42)
 # If using CUDA (GPU)
 if torch.cuda.is_available():
     torch.cuda.manual_seed(42)
+
+class ConvNet(nn.Module):
+    def __init__(self, num_features, window_size, act_fn=nn.ReLU(), kernel_size=6, out_channels=16):
+        super().__init__()
+
+        self.conv1 = nn.Conv1d( in_channels=num_features, out_channels=out_channels, kernel_size = kernel_size ) # Output is 16*37
+        self.conv2 = nn.Conv1d( in_channels=out_channels, out_channels=out_channels, kernel_size=kernel_size)
+
+        self.fc1 = nn.Linear( 896, 80) # 64 Output channels with a size of (ws-12-6-2)
+        self.fc2 = nn.Linear( 80, 80)
+        self.fc3 = nn.Linear( 80, 2)
+
+        self.MP1 = nn.MaxPool1d( kernel_size=2)
+
+        self.dropout = nn.Dropout(0.2)
+
+        self.act_fn = act_fn
+
+    def forward(self, x):
+        x = x.transpose(1,2)
+        x = self.act_fn( self.conv1(x) )
+        x = self.MP1( self.act_fn( self.conv2(x) ) )
+        #print(x.size())
+        x = torch.flatten(x, 1) # Flatten for FC
+        x = self.act_fn(self.dropout(self.fc1(x)))
+        x = self.act_fn(self.dropout(self.fc2(x)))
+        x = self.fc3(x)
+        return x
 
 class LSTMModel(nn.Module):
     def __init__(self, input_size, hidden_size, num_layers, output_size, dropout=0.2, bidirectional=True):
@@ -89,7 +118,7 @@ class LSTMCNN(nn.Module):
 
         self.fc1 = nn.Linear(combined_input_size, 128)
         self.fc2 = nn.Linear(128, 64)
-        self.fc_out = nn.Linear(64, output_size)
+        self.fc_out = nn.Linear(combined_input_size, output_size)
 
         # Activation function
         self.relu = nn.ReLU()
@@ -424,24 +453,59 @@ def extract_subseries(df, window_size, features, labels, index=0, n_aug=0):
     # Convert the list of subseries into a DataFrame and return
     return pd.concat(subseries, ignore_index=True), index
 
-def grab_series_data(window_size, features, labels, n_aug=0):
+def grab_series_data(window_size, features, labels, n_aug=0, gapfilled=False, normalize=False):
     data = pd.read_csv('data/preprocessed/data_merged_with_nans.csv')
 
-    # First only take in the data in time of the recordings
-    BG = pd.read_csv('data/gapfilled/BG_gapfilled.csv')
-    GW = pd.read_csv('data/gapfilled/GW_gapfilled.csv')
+    def convert_to_timestamp(df):
+        # Combine year and DOY (day of year)
+        df['datetime'] = pd.to_datetime(df['year'] * 1000 + df['day_of_year'], format='%Y%j')
+        # Add the 30min interval as hours and minutes
+        df['time_delta'] = pd.to_timedelta(df['30min'] * 30, unit='m')
+        df['timestamp'] = df['datetime'] + df['time_delta']
+        #print(df['timestamp'])
+        return df
 
-    # Filter out time that wasn't measured. The division into
-    # subframes is important for no subseries overlapping between
-    # recorded times
-    start_time = pd.to_datetime('2023-08-01 00:00:00')
-    end_time = pd.to_datetime('2024-04-01 00:00:00')
-    BG['filter_time'] = pd.to_datetime(BG['timestamp'])
-    GW['filter_time'] = pd.to_datetime(GW['timestamp'])
-    BG_23 = BG[BG['filter_time'] < start_time].copy(deep=True)
-    GW_23 = GW[GW['filter_time'] < start_time].copy(deep=True)
-    BG_24 = BG[BG['filter_time'] > end_time].copy(deep=True)
-    GW_24 = GW[GW['filter_time'] > end_time].copy(deep=True)
+    if gapfilled:
+        # First only take in the data in time of the recordings
+        BG = pd.read_csv('data/gapfilled/BG_gapfilled.csv')
+        GW = pd.read_csv('data/gapfilled/GW_gapfilled.csv')
+        # Filter out time that wasn't measured. The division into
+        # subframes is important for no subseries overlapping between
+        # recorded times
+        BG = convert_to_timestamp(BG)
+        GW = convert_to_timestamp(GW)
+
+        start_time = pd.to_datetime('2023-08-01 00:00:00')
+        end_time = pd.to_datetime('2024-04-01 00:00:00')
+        BG['filter_time'] = pd.to_datetime(BG['timestamp'])
+        GW['filter_time'] = pd.to_datetime(GW['timestamp'])
+        BG_23 = BG[BG['filter_time'] < start_time].copy(deep=True)
+        GW_23 = GW[GW['filter_time'] < start_time].copy(deep=True)
+        BG_24 = BG[BG['filter_time'] > end_time].copy(deep=True)
+        GW_24 = GW[GW['filter_time'] > end_time].copy(deep=True)
+
+    else:
+        # Split the data based on location (0 for GW, 1 for BG)
+        GW_data = data[data['location'] == 0].copy(deep=True)
+        BG_data = data[data['location'] == 1].copy(deep=True)
+
+        # Define the start and end times (for exclusion)
+        start_time = pd.to_datetime('2023-08-01')
+        end_time = pd.to_datetime('2024-04-01')
+
+        # Convert year and DOY to a datetime column in both datasets
+        GW_data = convert_to_timestamp(GW_data)
+        BG_data = convert_to_timestamp(BG_data)
+
+
+        # Filter out the rows between the start and end times
+        GW_23 = GW_data[(GW_data['timestamp'] < start_time)].copy(deep=True)
+        GW_24 = GW_data[(GW_data['timestamp'] > end_time)].copy(deep=True)
+        
+        BG_23 = BG_data[(BG_data['timestamp'] < start_time)].copy(deep=True)
+        BG_24 = BG_data[(BG_data['timestamp'] > end_time)].copy(deep=True)
+
+    print(f"BG23: {len(BG_23)}, GW_24: {len(GW_23)}, BG24: {len(BG_24)}, GW24: {len(GW_24)}")
 
     # Transform timestamp
     BG_23 = transform_timestamp(BG_23, col_name='timestamp')
@@ -454,6 +518,24 @@ def grab_series_data(window_size, features, labels, n_aug=0):
     GW_23['location'] = 1
     BG_24['location'] = 0
     GW_24['location'] = 1
+
+    if normalize:
+        feats_BG_23 = BG_23[features].copy(deep=True)
+        feats_GW_23 = GW_23[features].copy(deep=True)
+        feats_BG_24 = BG_24[features].copy(deep=True)
+        feats_GW_24 = GW_24[features].copy(deep=True)
+
+        scaler = StandardScaler()
+
+        feats_BG_23 = scaler.fit_transform(feats_BG_23)
+        feats_GW_23 = scaler.transform(feats_GW_23)
+        feats_BG_24 = scaler.transform(feats_BG_24)
+        feats_GW_24 = scaler.transform(feats_GW_24)
+
+        BG_23.loc[:,features] = feats_BG_23
+        GW_23.loc[:,features] = feats_GW_23
+        BG_24.loc[:,features] = feats_BG_24
+        GW_24.loc[:,features] = feats_GW_24
 
     # Now extract the subseries for the frames
     BG_23_ss, index = extract_subseries(BG_23, window_size=window_size, features=features, labels=labels, index=0, n_aug=n_aug)
@@ -497,7 +579,7 @@ def normalize_features(train_data, val_data, test_data, features):
     return train_data, val_data, test_data
 
 # Create split and data loaders
-def Splitted_SplitLoader(series_data, series_targets, batch_size):
+def Splitted_SplitLoader(series_data, series_targets, batch_size, features, normalize=True):
     # Create array of all possible indices
     idxs = series_data[ 'series_id' ].unique()
 
@@ -527,7 +609,8 @@ def Splitted_SplitLoader(series_data, series_targets, batch_size):
     labels_val = series_targets[ series_data['series_id'].isin( val_idxs ) ]
     labels_test = series_targets[ series_data['series_id'].isin( test_idxs ) ]
 
-    data_train, data_val, data_test = normalize_features(data_train, data_val, data_test, FEATURES)
+    if normalize:
+        data_train, data_val, data_test = normalize_features(data_train, data_val, data_test, features)
 
     trainset = SplittedTimeSeries(data_train, labels_train)
     valset = SplittedTimeSeries(data_val, labels_val)
